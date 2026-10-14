@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 
-const responsibleSchema = new.Schema({
+const responsibleSchema = new mongoose.Schema({
     name: String,
     contato: String,
     cpf: String,

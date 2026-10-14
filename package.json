@@ -2,23 +2,23 @@
   "name": "lumina-backend",
   "version": "1.0.0",
   "description": "Serviços de API RESTful, regras de negócio e infraestrutura de persistência de dados do ecossistema Lumina / Lolá: Gamificando a Fala.",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx nodemon index.js"
+  "keywords": [],
+  "homepage": "https://github.com/projeto-integrador-lumina/lumina-backend#readme",
+  "bugs": {
+    "url": "https://github.com/projeto-integrador-lumina/lumina-backend/issues"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/projeto-integrador-lumina/lumina-backend.git"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/projeto-integrador-lumina/lumina-backend/issues"
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npx nodemon index.js"
   },
-  "homepage": "https://github.com/projeto-integrador-lumina/lumina-backend#readme",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "dotenv": "^18.0.7",
@@ -29,5 +29,6 @@
     "nodemon": "^3.1.14",
     "swagger-ui-express": "^5.0.1",
     "yaml": "^2.9.1"
-  }
+  },
+  "devDependencies": {}
 }

@@ -9,7 +9,7 @@ const dbPassword = process.env.DB_PASS;
 
 const connect = () => {
     mongoose.connect(
-        `mongodb+srv://${dbUser}:${dbPassword}@cluster0.qxxqdxd.mongodb.net/api-food?appName=Cluster0`
+        `mongodb+srv://${dbUser}:${dbPassword}@cluster0.qxxqdxd.mongodb.net/api-lumina?appName=Cluster0`
     );
 
     const connection = mongoose.connection;
