@@ -1,25 +1,24 @@
 import mongoose from "mongoose";
 
 
-const responsibleSchema = new mongoose.Schema({
-    name: String,
+const responsavelSchema = new mongoose.Schema({
+    nome: String,
     contato: String,
-    cpf: String,
-    telephone: String,
+    cpf: String
 })
 
-const patientSchema = new mongoose.Schema({
-    name: String,
-    surname: String,
-    address: String,
-    date_birth: Date,
-    sex: String,
-    level_gravity: String,
-    photo_profile: String,
-    active: String,
-    responsible: responsibleSchema,
+const pacienteSchema = new mongoose.Schema({
+    nome: String,
+    sobrenome: String,
+    endereco: String,
+    data_nasc: Date,
+    sexo: String,
+    nivel_gravidade: String,
+    foto_perfil: String,
+    ativo: String,
+    responsavel: responsavelSchema,
 });
 
-const Patient = mongoose.model('Patient', patientSchema);
+const Paciente = mongoose.model('Paciente', pacienteSchema);
 
-export default Patient;
+export default Paciente;
