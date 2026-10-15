@@ -1,6 +1,10 @@
 import express from "express";
 import mongoose from "./config/db-connection.js";
 
+import Fonoaudiologo from "./models/Fonoaudiologo.js";
+import Paciente from "./models/Paciente.js";
+import Usuario from "./models/Usuario.js"
+
 const app = express();
 
 app.use(express.urlencoded({extended: false}));
