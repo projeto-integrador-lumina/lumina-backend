@@ -1,4 +1,4 @@
-import foodService from "../services/foodService.js";
+import pacienteService from "../services/pacienteService.js";
 
 import {ObjectId} from "mongodb";
 
@@ -16,7 +16,7 @@ const getAllPaciente = async (req, res) => {
 const createPaciente = async (req, res) => {
     try {
         const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, ativo, responsavel} = req.body;
-        await foodService.Create(nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, ativo, responsavel, req.loggedUser.id);
+        await pacienteService.Create(nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, ativo, responsavel, req.loggedUser.id);
         res.status(201).json({message: "Paciente cadastrado com sucesso!"});
     } catch (error) {
         console.log(error);

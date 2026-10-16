@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
 
 const fonoSchema = new mongoose.Schema({
-    name: String,
+    nome: String,
     email: String,
     crfa: String,
-    telephone: String,
-    photo_profile: String
+    telefone: String,
+    foto_perfil: String
 });
 
 const Fonoaudiologo = mongoose.model('Fonoaudiologo', fonoSchema);

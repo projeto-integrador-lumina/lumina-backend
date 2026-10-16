@@ -5,10 +5,16 @@ import Fonoaudiologo from "./models/Fonoaudiologo.js";
 import Paciente from "./models/Paciente.js";
 import Usuario from "./models/Usuario.js"
 
+import pacienteRoutes from "./routes/pacienteRoutes.js";
+
+
 const app = express();
 
 app.use(express.urlencoded({extended: false}));
 app.use(express.json());
+
+app.use("/api", pacienteRoutes);
+
 
 const port = process.env.PORT || 8080;
 app.listen(port, (error) => {
