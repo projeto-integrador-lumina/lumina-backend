@@ -2,71 +2,122 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import usuarioService from '../services/usuarioService.js';
+import fonoaudiologoService from '../services/fonoaudiologoService.js';
+import pacienteService from '../services/pacienteService.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import {ObjectId} from "mongodb";
 
 const JWTSecret = process.env.JWTSECRET;
+const SENHA_MIN = 8;
 
-const createUsuario = async (req, res) => {
+const limpa = (v) => String(v || "").trim().toLowerCase();
+
+const loginUsuario = async (req, res) => {
     try {
-        const { usuario, senha} = req.body;
-        if (!password) {
-            return res.status(400).json({ error: 'A senha é obrigatória.' });
+        const { usuario, senha, manter } = req.body;
+        if (!usuario || !senha) {
+            return res.status(400).json({ error: 'Usuário e senha são obrigatórios.' });
         }
-        const salt = bcrypt.genSaltSync(10);
-        const hash = bcrypt.hashSync(password, salt)
-        await userService.Create( name, email, hash, cpf, telephone );
-        res.status(201).json({ message: 'Usuário cadastrado com sucesso!' });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 'Erro interno do servidor.' });
-    }
-};
 
-const loginUser = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        if (email != undefined && password != undefined) {
-            const user = await userService.getOne(email);
-            if (user != undefined) {
-                const correct = bcrypt.compareSync(password, user.password);
-                if (correct) {
-                    jwt.sign({ id: user._id, email: user.email, type: "user" }, JWTSecret, { expiresIn: '48h' }, (error, token) => {
-                        if (error) {
-                            res.status(400).json({ error: 'Não foi possível gerar o token de autenticação.' });
-                        } else {
-                            res.status(200).json({token});
-                        }
-                    });
-                } else {
-                    res.status(401).json({ error: 'Senha incorreta.' });
-                }
-            } else {
-                res.status(404).json({ error: 'Usuário não encontrado.' });
+        const user = await usuarioService.getOne(limpa(usuario));
+        const correct = user ? bcrypt.compareSync(String(senha), user.senha) : false;
+
+        if (!correct) {
+            return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
+        }
+
+        if (!user.ativo) {
+            if (user.tipo === "Fono") {
+                return res.status(403).json({ error: 'Essa conta está desativada.', contaDesativada: true });
             }
-        } else {
-            res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
+            return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
         }
+
+        const payload = { id: user._id, usuario: user.usuario, tipo: user.tipo };
+        let nome;
+
+        if (user.tipo === "Fono") {
+            const fono = await fonoaudiologoService.getByLogin(user._id);
+            if (!fono) {
+                return res.status(401).json({ error: 'Fonoaudiólogo não encontrado para esse login.' });
+            }
+            payload.idFono = fono._id;
+            nome = fono.nome;
+        } else {
+            const paciente = await pacienteService.getByLogin(user._id);
+            if (!paciente || !paciente.ativo) {
+                return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
+            }
+            payload.idPaciente = paciente._id;
+            nome = paciente.nome;
+        }
+
+        const expiresIn = manter ? '30d' : '48h';
+
+        jwt.sign(payload, JWTSecret, { expiresIn }, (error, token) => {
+            if (error) {
+                res.status(400).json({ error: 'Não foi possível gerar o token de autenticação.' });
+            } else {
+                res.status(200).json({
+                    token,
+                    tipo: user.tipo,
+                    nome,
+                    precisaTrocarSenha: user.precisa_trocar_senha
+                });
+            }
+        });
     } catch (error) {
         console.log(error);
         res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 };
 
-const deleteUser = async (req, res) => {
+const trocarSenha = async (req, res) => {
     try {
-        const id = req.params.id;
-        if (ObjectId.isValid(id)) {
-            await userService.delete(id);
-            res.status(200).json({message: "Usuário deletado com sucesso!"});
-        } else {
-            res.status(400).json({error: "ID inválido."});
+        const { senhaAtual, novaSenha } = req.body;
+        if (!novaSenha || String(novaSenha).length < SENHA_MIN) {
+            return res.status(400).json({ error: `A nova senha precisa ter pelo menos ${SENHA_MIN} caracteres.` });
         }
+
+        const user = await usuarioService.getById(req.loggedUser.id);
+        if (!bcrypt.compareSync(String(senhaAtual || ""), user.senha)) {
+            return res.status(401).json({ error: 'Senha atual incorreta.' });
+        }
+
+        const hash = bcrypt.hashSync(String(novaSenha), 10);
+        await usuarioService.updateSenha(user._id, hash, false);
+        res.status(200).json({ message: 'Senha alterada com sucesso!' });
     } catch (error) {
         console.log(error);
-        res.status(500).json({error: "Erro ao deletar usuário. Erro interno do servidor."});
-    };
+        res.status(500).json({ error: 'Erro ao alterar senha.' });
+    }
 };
 
-export default { getAllUser, createUser, loginUser, deleteUser, JWTSecret};
+const desativarUsuario = async (req, res) => {
+    try {
+        await usuarioService.setAtivo(req.loggedUser.id, false);
+        res.status(200).json({ message: 'Conta desativada com sucesso!' });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Erro ao desativar conta.' });
+    }
+};
+
+const reativarUsuario = async (req, res) => {
+    try {
+        const { usuario, senha } = req.body;
+        const user = await usuarioService.getOne(limpa(usuario));
+
+        if (!user || user.tipo !== "Fono" || !bcrypt.compareSync(String(senha || ""), user.senha)) {
+            return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
+        }
+
+        await usuarioService.setAtivo(user._id, true);
+        res.status(200).json({ message: 'Conta reativada com sucesso!' });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Erro ao reativar conta.' });
+    }
+};
+
+export default { loginUsuario, trocarSenha, desativarUsuario, reativarUsuario, JWTSecret, SENHA_MIN };

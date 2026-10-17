@@ -1,50 +1,38 @@
 import Paciente from "../models/Paciente.js";
+import usuarioService from "./usuarioService.js";
 
 class pacienteService {
-    async getAll() {
-        try {
-            const pacientes = await Paciente.find();
-            return pacientes;
-        } catch (error) {
-            console.log(error);
-        }
+    async getAll(id_fono) {
+        return await Paciente.find({ id_fono, ativo: true }).sort({ nome: 1 });
     }
 
-    async Create(nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, ativo, responsavel, pacienteId) {
-        try {
-            const newPaciente = new Paciente({ nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, ativo, responsavel, pacienteId });
-            await newPaciente.save();
-        } catch (error) { 
-            console.log(error);
-        }
+    async Create(nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, id_fono, id_login) {
+        const newPaciente = new Paciente({ nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, id_fono, id_login });
+        return await newPaciente.save();
     }
 
     async delete(id) {
-        try {
-            await Paciente.findByIdAndDelete(id);
-            console.log(`Paciente com ID ${id} deletado com sucesso!`);
-        } catch (error) {
-            console.log(error);
+        const paciente = await Paciente.findByIdAndUpdate(id, { ativo: false });
+        if (paciente) {
+            await usuarioService.setAtivo(paciente.id_login, false);
         }
     }
 
-    async update(id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, ativo, responsavel) {
-        try {
-            await Paciente.findByIdAndUpdate(id, { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, ativo, responsavel });
-            console.log(`Paciente com ID ${id} atualizado com sucesso!`);
-        } catch (error) {
-            console.log(error);
-        }
+    async update(id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel) {
+        return await Paciente.findByIdAndUpdate(
+            id,
+            { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel }, // undefined é ignorado
+            { returnDocument: "after", runValidators: true }
+        );
     }
 
     async getOne(id) {
-        try {
-            const paciente = await Paciente.findById({ _id: id });
-            return paciente;
-        } catch (error) {
-            console.log(error);
-        }
-    };
+        return await Paciente.findById(id);
+    }
+
+    async getByLogin(id_login) {
+        return await Paciente.findOne({ id_login });
+    }
 };
 
 export default new pacienteService();

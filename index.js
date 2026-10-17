@@ -6,6 +6,8 @@ import Paciente from "./models/Paciente.js";
 import Usuario from "./models/Usuario.js"
 
 import pacienteRoutes from "./routes/pacienteRoutes.js";
+import fonoaudiologoRoutes from "./routes/fonoaudiologoRoutes.js";
+import usuarioRoutes from "./routes/usuarioRoutes.js";
 
 
 const app = express();
@@ -14,6 +16,8 @@ app.use(express.urlencoded({extended: false}));
 app.use(express.json());
 
 app.use("/api", pacienteRoutes);
+app.use("/api", fonoaudiologoRoutes);
+app.use("/api", usuarioRoutes);
 
 
 const port = process.env.PORT || 8080;
