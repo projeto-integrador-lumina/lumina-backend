@@ -1,5 +1,6 @@
 import express from "express";
 import mongoose from "./config/db-connection.js";
+import cors from "./middlewares/cors.js";
 
 import Fonoaudiologo from "./models/Fonoaudiologo.js";
 import Paciente from "./models/Paciente.js";
@@ -8,16 +9,19 @@ import Usuario from "./models/Usuario.js"
 import pacienteRoutes from "./routes/pacienteRoutes.js";
 import fonoaudiologoRoutes from "./routes/fonoaudiologoRoutes.js";
 import usuarioRoutes from "./routes/usuarioRoutes.js";
+import appRoutes from "./routes/appRoutes.js";
 
 
 const app = express();
 
+app.use(cors);
 app.use(express.urlencoded({extended: false}));
 app.use(express.json());
 
 app.use("/api", pacienteRoutes);
 app.use("/api", fonoaudiologoRoutes);
 app.use("/api", usuarioRoutes);
+app.use("/api", appRoutes);
 
 
 const port = process.env.PORT || 8080;
