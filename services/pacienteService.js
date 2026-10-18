@@ -6,8 +6,8 @@ class pacienteService {
         return await Paciente.find({ id_fono, ativo: true }).sort({ nome: 1 });
     }
 
-    async Create(nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, id_fono, id_login) {
-        const newPaciente = new Paciente({ nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, id_fono, id_login });
+    async Create(nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, id_fono, id_login, alvo_atual) {
+        const newPaciente = new Paciente({ nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, id_fono, id_login, alvo_atual });
         return await newPaciente.save();
     }
 
@@ -18,10 +18,10 @@ class pacienteService {
         }
     }
 
-    async update(id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel) {
+    async update(id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual) {
         return await Paciente.findByIdAndUpdate(
             id,
-            { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel }, // undefined é ignorado
+            { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual }, // undefined é ignorado
             { returnDocument: "after", runValidators: true }
         );
     }
@@ -32,6 +32,38 @@ class pacienteService {
 
     async getByLogin(id_login) {
         return await Paciente.findOne({ id_login });
+    }
+
+    async setPin(id, hash) {
+        await Paciente.findByIdAndUpdate(id, { pin_responsavel: hash, pin_tentativas: 0, pin_bloqueado_ate: null });
+    }
+
+    async getComPin(id) {
+        return await Paciente.findById(id).select("+pin_responsavel");
+    }
+
+    async registrarErroPin(id, tentativas, bloqueado_ate) {
+        await Paciente.findByIdAndUpdate(id, { pin_tentativas: tentativas, pin_bloqueado_ate: bloqueado_ate });
+    }
+
+    async zerarErrosPin(id) {
+        await Paciente.findByIdAndUpdate(id, { pin_tentativas: 0, pin_bloqueado_ate: null });
+    }
+
+    async addGanhos(id, xp, moedas) {
+        return await Paciente.findByIdAndUpdate(id, { $inc: { xp, moedas } }, { returnDocument: "after" });
+    }
+
+    async comprar(id, id_item, preco) {
+        return await Paciente.findOneAndUpdate(
+            { _id: id, moedas: { $gte: preco }, inventario: { $ne: id_item } },
+            { $inc: { moedas: -preco }, $push: { inventario: id_item } },
+            { returnDocument: "after" }
+        );
+    }
+
+    async setCampos(id, campos) {
+        return await Paciente.findByIdAndUpdate(id, { $set: campos }, { returnDocument: "after" });
     }
 };
 
