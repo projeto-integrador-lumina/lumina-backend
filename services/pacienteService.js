@@ -21,7 +21,7 @@ class pacienteService {
     async update(id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual) {
         return await Paciente.findByIdAndUpdate(
             id,
-            { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual }, // undefined é ignorado
+            { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual }, 
             { returnDocument: "after", runValidators: true }
         );
     }

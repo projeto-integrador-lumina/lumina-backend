@@ -3,7 +3,6 @@ const pacienteRoutes = express.Router();
 import pacienteController from "../controllers/pacienteController.js";
 import Auth, { soFono } from "../middlewares/Auth.js";
 
-// todas as rotas de paciente são da fono logada
 pacienteRoutes.get('/pacientes', Auth, soFono, pacienteController.getAllPaciente);
 pacienteRoutes.post('/pacientes', Auth, soFono, pacienteController.createPaciente);
 pacienteRoutes.get('/pacientes/:id', Auth, soFono, pacienteController.getOnePaciente);
