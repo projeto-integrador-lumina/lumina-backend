@@ -8,7 +8,7 @@ import Usuario from "./models/Usuario.js"
 import pacienteRoutes from "./routes/pacienteRoutes.js";
 import fonoaudiologoRoutes from "./routes/fonoaudiologoRoutes.js";
 import usuarioRoutes from "./routes/usuarioRoutes.js";
-
+import atividadeRoutes from "./routes/atividadeRoutes.js";
 
 const app = express();
 
@@ -18,7 +18,7 @@ app.use(express.json());
 app.use("/api", pacienteRoutes);
 app.use("/api", fonoaudiologoRoutes);
 app.use("/api", usuarioRoutes);
-
+app.use("/api", atividadeRoutes);
 
 const port = process.env.PORT || 8080;
 app.listen(port, (error) => {
