@@ -16,6 +16,7 @@ const Auth = (req, res, next) => {
         if (error) {
             return res.status(401).json({ error: "Token inválido ou expirado." });
         }
+
         if (data.scope) {
             return res.status(401).json({ error: "Token inválido ou expirado." });
         }
@@ -28,10 +29,10 @@ const Auth = (req, res, next) => {
 
             req.token = token;
             req.loggedUser = {
-                id: data.id,            
+                id: data.id,               
                 usuario: data.usuario,
                 tipo: data.tipo,           
-                idFono: data.idFono,    
+                idFono: data.idFono,       
                 idPaciente: data.idPaciente 
             };
             next();
