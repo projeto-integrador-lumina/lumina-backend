@@ -8,10 +8,8 @@ import { idValido } from "../utils/acesso.js";
 import { idade } from "../utils/data.js";
 import { MOEDAS_MISSAO, MOEDAS_TREINO } from "../utils/jogo.js";
 
-// o paciente logado (o id vem do TOKEN, nunca da URL)
 const pacienteLogado = (req) => pacienteService.getOne(req.loggedUser.idPaciente);
 
-// formato de palavra enviado ao exercício (sem dados clínicos como fonema/categoria)
 const paraExercicio = (palavra, acertadas) => ({
     _id: palavra._id,
     texto: palavra.texto,
@@ -57,7 +55,6 @@ const getEvolucao = async (req, res) => {
     }
 };
 
-/* ----------------------------- níveis ----------------------------- */
 
 const getNiveis = async (req, res) => {
     try {
@@ -85,7 +82,6 @@ const getNivel = async (req, res) => {
 
         const acertadas = new Set((await tentativaService.palavrasAcertadas(req.loggedUser.idPaciente)).map(String));
         const palavras = await palavraService.getByIds(nivel.palavras);
-        // mantém a ordem definida no nível
         const porId = new Map(palavras.map((p) => [String(p._id), p]));
         const ordenadas = nivel.palavras.map((id) => porId.get(String(id))).filter(Boolean);
 
@@ -99,26 +95,72 @@ const getNivel = async (req, res) => {
     }
 };
 
-/* ---------------------------- tentativas ---------------------------- */
 
-// body: { id_palavra, silabas: [{ acertou: true|false }, ...], duracao_ms, id_atividade? }
-// Obs.: o app informa se cada sílaba foi acertada; o servidor calcula "acertou" e as recompensas.
+const embaralhar = (lista) => {
+    const a = [...lista];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+};
+
+const getOpcoes = async (req, res) => {
+    try {
+        if (!idValido(req.params.id)) return res.status(400).json({error: "ID inválido."});
+
+        const quantidade = req.query.quantidade === undefined ? 4 : Number(req.query.quantidade);
+        if (!Number.isInteger(quantidade) || quantidade < 2 || quantidade > 6) {
+            return res.status(400).json({error: "quantidade deve ser um número de 2 a 6."});
+        }
+
+        const palavra = await palavraService.getOne(req.params.id);
+        if (!palavra) return res.status(404).json({error: "Palavra não encontrada."});
+
+        const outras = (await palavraService.getAll()).filter((p) => String(p._id) !== String(palavra._id));
+        if (!outras.length) return res.status(409).json({error: "Não há outras palavras no catálogo para formar as opções."});
+
+        const opcoes = embaralhar([palavra, ...embaralhar(outras).slice(0, quantidade - 1)]).map((p) => ({
+            _id: p._id, texto: p.texto, imagem_url: p.imagem_url, audio_url: p.audio_url
+        }));
+        res.status(200).json({id_palavra: palavra._id, opcoes});
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({error: "Erro ao montar as opções."});
+    }
+};
+
 const createTentativa = async (req, res) => {
     try {
-        const { id_palavra, silabas, duracao_ms, id_atividade } = req.body;
+        const { id_palavra, silabas, id_escolhida, duracao_ms, id_atividade } = req.body;
+        const tipo = req.body.tipo === undefined ? "fala" : req.body.tipo;
 
+        if (!["fala", "escolha"].includes(tipo)) return res.status(400).json({error: 'tipo deve ser "fala" ou "escolha".'});
         if (!idValido(id_palavra)) return res.status(400).json({error: "id_palavra inválido."});
-        if (!Array.isArray(silabas) || !silabas.every((s) => s && typeof s.acertou === "boolean")) {
-            return res.status(400).json({error: "Envie silabas: [{ acertou: true|false }, ...]."});
-        }
         if (duracao_ms !== undefined && (!Number.isFinite(duracao_ms) || duracao_ms < 0)) {
             return res.status(400).json({error: "duracao_ms inválida."});
         }
 
         const palavra = await palavraService.getOne(id_palavra);
         if (!palavra) return res.status(404).json({error: "Palavra não encontrada."});
-        if (silabas.length !== palavra.silabas.length) {
-            return res.status(400).json({error: `Essa palavra tem ${palavra.silabas.length} sílaba(s).`});
+
+        let acertou, silabasGravadas = [];
+
+        if (tipo === "fala") {
+            if (!Array.isArray(silabas) || !silabas.every((s) => s && typeof s.acertou === "boolean")) {
+                return res.status(400).json({error: "Envie silabas: [{ acertou: true|false }, ...]."});
+            }
+            if (silabas.length !== palavra.silabas.length) {
+                return res.status(400).json({error: `Essa palavra tem ${palavra.silabas.length} sílaba(s).`});
+            }
+            silabasGravadas = palavra.silabas.map((texto, i) => ({ texto, acertou: silabas[i].acertou }));
+            acertou = silabasGravadas.every((s) => s.acertou);
+        } else {
+            if (!idValido(id_escolhida)) return res.status(400).json({error: "id_escolhida inválido."});
+            if (!(await palavraService.getOne(id_escolhida))) {
+                return res.status(404).json({error: "A palavra escolhida não existe."});
+            }
+            acertou = String(id_escolhida) === String(palavra._id);
         }
 
         if (id_atividade !== undefined && id_atividade !== null) {
@@ -132,11 +174,14 @@ const createTentativa = async (req, res) => {
         }
 
         const paciente = await pacienteLogado(req);
-        const resultado = await appService.registrarTentativa(
-            paciente, palavra, silabas.map((s) => s.acertou),
-            Math.min(Math.round(duracao_ms || 0), 10 * 60 * 1000), // no máximo 10 min por tentativa
+        const resultado = await appService.registrarTentativa(paciente, palavra, {
+            tipo,
+            acertou,
+            silabas: silabasGravadas,
+            id_escolhida: tipo === "escolha" ? id_escolhida : null,
+            duracao_ms: Math.min(Math.round(duracao_ms || 0), 10 * 60 * 1000), // no máximo 10 min por tentativa
             id_atividade
-        );
+        });
         res.status(201).json(resultado);
     } catch (error) {
         console.log(error);
@@ -144,7 +189,6 @@ const createTentativa = async (req, res) => {
     }
 };
 
-/* ---------------------------- atividades ---------------------------- */
 
 const getAtividades = async (req, res) => {
     try {
@@ -160,7 +204,6 @@ const getAtividades = async (req, res) => {
     }
 };
 
-// carrega a atividade e confere se é DESTE paciente
 const atividadeDoPaciente = async (req, res) => {
     if (!idValido(req.params.id)) {
         res.status(400).json({error: "ID inválido."});
@@ -195,7 +238,6 @@ const getAtividade = async (req, res) => {
     }
 };
 
-// só conclui se TODAS as palavras foram acertadas depois que a fono atribuiu
 const concluirAtividade = async (req, res) => {
     try {
         const atividade = await atividadeDoPaciente(req, res);
@@ -210,7 +252,6 @@ const concluirAtividade = async (req, res) => {
             return res.status(409).json({error: "Ainda faltam palavras para concluir.", faltam});
         }
 
-        // atômico: se dois pedidos chegarem juntos, só um recebe a recompensa
         const concluida = await atividadeService.concluir(atividade._id);
         if (!concluida) return res.status(409).json({error: "Essa atividade já foi concluída."});
 
@@ -223,7 +264,6 @@ const concluirAtividade = async (req, res) => {
     }
 };
 
-/* --------------------------- configurações --------------------------- */
 
 const CONFIG = {
     som_ligado: (v) => typeof v === "boolean",
@@ -261,6 +301,6 @@ const updateConfiguracoes = async (req, res) => {
 };
 
 export default {
-    getHome, getPerfil, getEvolucao, getNiveis, getNivel, createTentativa,
+    getHome, getPerfil, getEvolucao, getNiveis, getNivel, getOpcoes, createTentativa,
     getAtividades, getAtividade, concluirAtividade, getConfiguracoes, updateConfiguracoes
 };

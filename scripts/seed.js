@@ -6,9 +6,10 @@ import Item from "../models/Item.js";
 const palavras = [
     { texto: "touro", silabas: ["TOU", "RO"], fonema: "/r/", categoria_som: "liquido" },
     { texto: "cerca", silabas: ["CER", "CA"], fonema: "/s/", categoria_som: "fricativo" },
+    { texto: "peru",  silabas: ["PE", "RU"],  fonema: "/r/", categoria_som: "liquido" },
     { texto: "vaca",  silabas: ["VA", "CA"],  fonema: "/v/", categoria_som: "fricativo" },
     { texto: "pato",  silabas: ["PA", "TO"],  fonema: "/p/", categoria_som: "explosivo" },
-    { texto: "mula",  silabas: ["MU", "LA"],  fonema: "/m/", categoria_som: "nasal" }
+    { texto: "sapo",  silabas: ["SA", "PO"],  fonema: "/s/", categoria_som: "fricativo" }
 ].map((p) => ({
     ...p,
     imagem_url: `/assets/palavras/${p.texto}.png`,
@@ -36,14 +37,15 @@ const run = async () => {
     }
 
     const docs = await Palavra.find({ texto: { $in: palavras.map((p) => p.texto) } });
-    const ids = palavras.map((p) => docs.find((d) => d.texto === p.texto)._id); // mantém a ordem
+    const NIVEL_1 = ["touro", "cerca", "peru"]; // palavras de fala do nível 1, na ordem do jogo
+    const ids = NIVEL_1.map((texto) => docs.find((d) => d.texto === texto)._id); // mantém a ordem
     await Nivel.findOneAndUpdate({ numero: 1 }, { numero: 1, nome: "A fazenda", palavras: ids }, { upsert: true });
 
     for (const i of itens) {
         await Item.findOneAndUpdate({ nome: i.nome }, i, { upsert: true });
     }
 
-    console.log(`Seed concluído: ${palavras.length} palavras, 1 nível, ${itens.length} itens.`);
+    console.log(`Seed concluído: ${palavras.length} palavras, 1 nível (${NIVEL_1.length} palavras), ${itens.length} itens.`);
     await mongoose.disconnect();
 };
 

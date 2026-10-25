@@ -15,6 +15,7 @@ appRoutes.get('/app/perfil/evolucao', paciente, appController.getEvolucao);
 
 appRoutes.get('/app/niveis', paciente, appController.getNiveis);
 appRoutes.get('/app/niveis/:numero', paciente, appController.getNivel);
+appRoutes.get('/app/palavras/:id/opcoes', paciente, appController.getOpcoes);
 appRoutes.post('/app/tentativas', paciente, appController.createTentativa);
 
 appRoutes.get('/app/atividades', paciente, appController.getAtividades);
