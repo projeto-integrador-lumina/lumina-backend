@@ -1,12 +1,14 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
-    user: String,
-    password: String,
-    type: String,
-    active: String
-});
+    usuario: { type: String, required: true, unique: true, trim: true, lowercase: true },
+    senha: { type: String, required: true }, // sempre o hash do bcrypt
+    tipo: { type: String, enum: ["Fono", "Paciente"], required: true },
+    ativo: { type: Boolean, default: true },
+    // true quando a senha foi gerada pela fono (paciente troca no 1º acesso)
+    precisa_trocar_senha: { type: Boolean, default: false }
+}, { timestamps: true });
 
-const User = mongoose.model('User', userSchema);
+const Usuario = mongoose.model('Usuario', userSchema);
 
-export default User;
+export default Usuario;
