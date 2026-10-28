@@ -1,6 +1,6 @@
 import express from "express";
 const mensagemRoutes = express.Router();
-import mensagemController from "../controllers/mensagemController.js";
+import mensagemController from "../controllers/MensagemController.js";
 import Auth, { soFono } from "../middlewares/Auth.js";
 
 mensagemRoutes.get('/mensagens', Auth, soFono, mensagemController.getConversas);

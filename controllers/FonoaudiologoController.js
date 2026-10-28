@@ -1,6 +1,6 @@
 import fonoaudiologoService from "../services/fonoaudiologoService.js";
 import usuarioService from "../services/usuarioService.js";
-import usuarioController from "./usuarioController.js";
+import usuarioController from "./UsuarioController.js";
 import bcrypt from "bcrypt";
 
 const SENHA_MIN = usuarioController.SENHA_MIN;

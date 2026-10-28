@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import usuarioController from "../controllers/usuarioController.js";
+import usuarioController from "../controllers/UsuarioController.js";
 
 const JWTSecret = usuarioController.JWTSecret;
 

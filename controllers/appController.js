@@ -95,7 +95,6 @@ const getNivel = async (req, res) => {
     }
 };
 
-
 const embaralhar = (lista) => {
     const a = [...lista];
     for (let i = a.length - 1; i > 0; i--) {

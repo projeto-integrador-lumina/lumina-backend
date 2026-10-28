@@ -1,9 +1,9 @@
 import express from "express";
 const appRoutes = express.Router();
-import appController from "../controllers/appController.js";
-import lojaController from "../controllers/lojaController.js";
-import notificacaoController from "../controllers/notificacaoController.js";
-import mensagemController from "../controllers/mensagemController.js";
+import appController from "../controllers/AppController.js";
+import lojaController from "../controllers/LojaController.js";
+import notificacaoController from "../controllers/NotificacaoController.js";
+import mensagemController from "../controllers/MensagemController.js";
 import Auth, { soPaciente } from "../middlewares/Auth.js";
 import AuthResponsavel from "../middlewares/AuthResponsavel.js";
 

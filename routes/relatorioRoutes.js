@@ -1,6 +1,6 @@
 import express from "express";
 const relatorioRoutes = express.Router();
-import relatorioController from "../controllers/relatorioController.js";
+import relatorioController from "../controllers/RelatorioController.js";
 import Auth, { soFono } from "../middlewares/Auth.js";
 
 relatorioRoutes.get('/relatorios/resumo', Auth, soFono, relatorioController.getResumo);

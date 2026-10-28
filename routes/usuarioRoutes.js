@@ -1,6 +1,6 @@
 import express from "express";
 const usuarioRoutes = express.Router();
-import usuarioController from "../controllers/usuarioController.js";
+import usuarioController from "../controllers/UsuarioController.js";
 import Auth, { soFono } from "../middlewares/Auth.js";
 
 usuarioRoutes.post('/auth/login', usuarioController.loginUsuario);

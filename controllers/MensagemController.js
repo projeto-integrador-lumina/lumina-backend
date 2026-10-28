@@ -1,6 +1,6 @@
 import mensagemService from "../services/mensagemService.js";
 import pacienteService from "../services/pacienteService.js";
-import usuarioController from "./usuarioController.js";
+import usuarioController from "./UsuarioController.js";
 import { pacienteDaFono } from "../utils/acesso.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";

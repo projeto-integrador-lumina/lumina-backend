@@ -1,6 +1,6 @@
 import express from "express";
 const fonoaudiologoRoutes = express.Router();
-import fonoaudiologoController from "../controllers/fonoaudiologoController.js";
+import fonoaudiologoController from "../controllers/FonoaudiologoController.js";
 import Auth, { soFono } from "../middlewares/Auth.js";
 
 fonoaudiologoRoutes.post('/fonoaudiologos', fonoaudiologoController.createFonoaudiologo);

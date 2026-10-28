@@ -1,6 +1,6 @@
 import express from "express";
 const pacienteRoutes = express.Router();
-import pacienteController from "../controllers/pacienteController.js";
+import pacienteController from "../controllers/PacienteController.js";
 import Auth, { soFono } from "../middlewares/Auth.js";
 
 pacienteRoutes.get('/pacientes', Auth, soFono, pacienteController.getAllPaciente);

@@ -1,6 +1,6 @@
 import express from "express";
 const atividadeRoutes = express.Router();
-import atividadeController from "../controllers/atividadeController.js";
+import atividadeController from "../controllers/AtividadeController.js";
 import Auth, { soFono } from "../middlewares/Auth.js";
 
 atividadeRoutes.get('/atividades', Auth, soFono, atividadeController.getAllAtividade);
