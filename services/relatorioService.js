@@ -50,7 +50,7 @@ class relatorioService {
             .map((p) => ({
                 _id: p._id,
                 nome: `${p.nome} ${p.sobrenome}`,
-                ultimo_treino: ultimoTreino.get(String(p._id)) || null // dentro do período consultado
+                ultimo_treino: ultimoTreino.get(String(p._id)) || null 
             }));
 
         const top_pacientes = pacientes

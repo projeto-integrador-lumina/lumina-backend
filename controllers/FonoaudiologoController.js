@@ -9,6 +9,7 @@ const createFonoaudiologo = async (req, res) => {
     let login = null;
     try {
         const { nome, email, crfa, telefone, usuario, senha } = req.body;
+
         if (!nome || !email || !crfa || !telefone || !usuario || !senha) {
             return res.status(400).json({ error: "Preencha todos os campos." });
         }
@@ -35,6 +36,7 @@ const createFonoaudiologo = async (req, res) => {
         res.status(201).json({ message: "Fonoaudiólogo cadastrado com sucesso!" });
     } catch (error) {
         if (login) await usuarioService.delete(login._id);
+
         console.log(error);
         if (error.name === "ValidationError") {
             return res.status(400).json({ error: "Dados inválidos. Confira os campos." });

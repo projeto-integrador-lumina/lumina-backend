@@ -130,6 +130,7 @@ const getOpcoes = async (req, res) => {
     }
 };
 
+
 const createTentativa = async (req, res) => {
     try {
         const { id_palavra, silabas, id_escolhida, duracao_ms, id_atividade } = req.body;
@@ -179,7 +180,7 @@ const createTentativa = async (req, res) => {
             acertou,
             silabas: silabasGravadas,
             id_escolhida: tipo === "escolha" ? id_escolhida : null,
-            duracao_ms: Math.min(Math.round(duracao_ms || 0), 10 * 60 * 1000), // no máximo 10 min por tentativa
+            duracao_ms: Math.min(Math.round(duracao_ms || 0), 10 * 60 * 1000), 
             id_atividade
         });
         res.status(201).json(resultado);

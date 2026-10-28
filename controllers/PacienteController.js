@@ -23,9 +23,36 @@ const PIN_VALIDO = /^\d{4,6}$/;
 
 const gerarSenhaProvisoria = () => crypto.randomBytes(4).toString("hex");
 
+const carregar = async (req, res, { exigirAtivo = false } = {}) => {
+    const id = req.params.id;
+    if (!ObjectId.isValid(id)) {
+        res.status(400).json({error: "ID inválido."});
+        return null;
+    }
+    const paciente = await pacienteService.getOne(id);
+    if (!paciente) {
+        res.status(404).json({error: "Paciente não encontrado."});
+        return null;
+    }
+    if (paciente.id_fono.toString() !== req.loggedUser.idFono) {
+        res.status(403).json({error: "Você não tem permissão para acessar este paciente."});
+        return null;
+    }
+    if (exigirAtivo && !paciente.ativo) {
+        res.status(409).json({error: "Paciente desativado. Ative-o para continuar."});
+        return null;
+    }
+    return paciente;
+};
+
 const getAllPaciente = async (req, res) => {
     try {
-        const pacientes = await pacienteService.getAll(req.loggedUser.idFono);
+        const { ativo } = req.query;
+        if (ativo !== undefined && !["true", "false", "todos"].includes(ativo)) {
+            return res.status(400).json({error: 'ativo deve ser "true", "false" ou "todos".'});
+        }
+        const filtro = ativo === "false" ? false : ativo === "todos" ? null : true;
+        const pacientes = await pacienteService.getAll(req.loggedUser.idFono, filtro);
         res.status(200).json({pacientes});
     } catch (error) {
         console.log (error);
@@ -64,6 +91,7 @@ const createPaciente = async (req, res) => {
         });
     } catch (error) {
         if (login) await usuarioService.delete(login._id);
+
         console.log(error);
         if (error.name === "ValidationError") {
             return res.status(400).json({error: "Dados inválidos. Confira os campos."});
@@ -72,45 +100,31 @@ const createPaciente = async (req, res) => {
     };
 };
 
-const deletePaciente = async (req, res) => {
+const alterarAtivo = (ativar) => async (req, res) => {
     try {
-        const id = req.params.id;
-        if (ObjectId.isValid(id)) {
-            const paciente = await pacienteService.getOne(id);
-            if (!paciente || !paciente.ativo) {
-                return res.status(404).json({error: "Paciente não encontrado."});
-            }
-            if (paciente.id_fono.toString() !== req.loggedUser.idFono) {
-                return res.status(403).json({error: "Você não tem permissão para deletar este paciente."});
-            }
-            await pacienteService.delete(id);
-            res.status(200).json({message: "Paciente deletado com sucesso!"});
-        } else {
-            res.status(400).json({error: "ID inválido."});
+        const paciente = await carregar(req, res);
+        if (!paciente) return;
+        if (paciente.ativo === ativar) {
+            return res.status(409).json({error: ativar ? "Paciente já está ativo." : "Paciente já está desativado."});
         }
+        await pacienteService.setAtivo(paciente._id, ativar);
+        res.status(200).json({message: ativar ? "Paciente ativado com sucesso!" : "Paciente desativado com sucesso!"});
     } catch (error) {
         console.log(error);
-        res.status(500).json({error: "Erro ao deletar paciente."});
-    };
+        res.status(500).json({error: ativar ? "Erro ao ativar paciente." : "Erro ao desativar paciente."});
+    }
 };
+const ativarPaciente = alterarAtivo(true);
+const desativarPaciente = alterarAtivo(false);
+const deletePaciente = desativarPaciente; 
 
 const updatePaciente = async (req, res) => {
     try {
-        const id = req.params.id;
-        if (ObjectId.isValid(id)) {
-            const paciente = await pacienteService.getOne(id);
-            if (!paciente || !paciente.ativo) {
-                return res.status(404).json({error: "Paciente não encontrado."});
-            }
-            if (paciente.id_fono.toString() !== req.loggedUser.idFono) {
-                return res.status(403).json({error: "Você não tem permissão para atualizar este Paciente."});
-            }
-            const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual } = req.body;
-            await pacienteService.update(id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual);
-            res.status(200).json({message: "Paciente atualizado com sucesso!"});
-        } else {
-            res.status(400).json({error: "ID inválido."});
-        }
+        const paciente = await carregar(req, res, { exigirAtivo: true });
+        if (!paciente) return;
+        const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual } = req.body;
+        await pacienteService.update(paciente._id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual);
+        res.status(200).json({message: "Paciente atualizado com sucesso!"});
     } catch (error) {
         console.log(error);
         if (error.name === "ValidationError") {
@@ -122,23 +136,13 @@ const updatePaciente = async (req, res) => {
 
 const getOnePaciente = async (req, res) => {
     try {
-        const id = req.params.id;
-        if (ObjectId.isValid(id)) {
-            const paciente = await pacienteService.getOne(id);
-            if (!paciente || !paciente.ativo) {
-                return res.status(404).json({error: "Paciente não encontrado."});
-            }
-            if (paciente.id_fono.toString() !== req.loggedUser.idFono) {
-                return res.status(403).json({error: "Você não tem permissão para ver este Paciente."});
-            }
-            const login = await usuarioService.getById(paciente.id_login);
-            res.status(200).json({
-                paciente,
-                login: login ? { usuario: login.usuario, precisa_trocar_senha: login.precisa_trocar_senha } : null
-            });
-        } else {
-            res.status(400).json({error: "ID inválido."});
-        }
+        const paciente = await carregar(req, res);
+        if (!paciente) return;
+        const login = await usuarioService.getById(paciente.id_login);
+        res.status(200).json({
+            paciente,
+            login: login ? { usuario: login.usuario, precisa_trocar_senha: login.precisa_trocar_senha } : null
+        });
     } catch (error) {
         console.log(error);
         res.status(500).json({error: "Erro ao buscar Paciente."});
@@ -147,27 +151,17 @@ const getOnePaciente = async (req, res) => {
 
 const resetarSenhaPaciente = async (req, res) => {
     try {
-        const id = req.params.id;
-        if (ObjectId.isValid(id)) {
-            const paciente = await pacienteService.getOne(id);
-            if (!paciente || !paciente.ativo) {
-                return res.status(404).json({error: "Paciente não encontrado."});
-            }
-            if (paciente.id_fono.toString() !== req.loggedUser.idFono) {
-                return res.status(403).json({error: "Você não tem permissão para alterar este Paciente."});
-            }
-            const login = await usuarioService.getById(paciente.id_login);
-            const senhaProvisoria = gerarSenhaProvisoria();
-            const hash = bcrypt.hashSync(senhaProvisoria, 10);
-            await usuarioService.updateSenha(login._id, hash, true);
+        const paciente = await carregar(req, res, { exigirAtivo: true });
+        if (!paciente) return;
+        const login = await usuarioService.getById(paciente.id_login);
+        const senhaProvisoria = gerarSenhaProvisoria();
+        const hash = bcrypt.hashSync(senhaProvisoria, 10);
+        await usuarioService.updateSenha(login._id, hash, true);
 
-            res.status(200).json({
-                message: "Senha redefinida com sucesso!",
-                login: { usuario: login.usuario, senha: senhaProvisoria }
-            });
-        } else {
-            res.status(400).json({error: "ID inválido."});
-        }
+        res.status(200).json({
+            message: "Senha redefinida com sucesso!",
+            login: { usuario: login.usuario, senha: senhaProvisoria }
+        });
     } catch (error) {
         console.log(error);
         res.status(500).json({error: "Erro ao redefinir senha."});
@@ -176,17 +170,11 @@ const resetarSenhaPaciente = async (req, res) => {
 
 const definirPinPaciente = async (req, res) => {
     try {
-        const id = req.params.id;
-        if (!ObjectId.isValid(id)) return res.status(400).json({error: "ID inválido."});
         if (!PIN_VALIDO.test(String(req.body.pin || ""))) {
             return res.status(400).json({error: "O PIN deve ter de 4 a 6 números."});
         }
-
-        const paciente = await pacienteService.getOne(id);
-        if (!paciente || !paciente.ativo) return res.status(404).json({error: "Paciente não encontrado."});
-        if (paciente.id_fono.toString() !== req.loggedUser.idFono) {
-            return res.status(403).json({error: "Você não tem permissão para alterar este Paciente."});
-        }
+        const paciente = await carregar(req, res, { exigirAtivo: true });
+        if (!paciente) return;
 
         await pacienteService.setPin(paciente._id, bcrypt.hashSync(String(req.body.pin), 10));
         res.status(200).json({message: "PIN do responsável atualizado!"});
@@ -196,4 +184,4 @@ const definirPinPaciente = async (req, res) => {
     }
 };
 
-export default { getAllPaciente, createPaciente, deletePaciente, updatePaciente, getOnePaciente, resetarSenhaPaciente, definirPinPaciente };
+export default { getAllPaciente, createPaciente, deletePaciente, ativarPaciente, desativarPaciente, updatePaciente, getOnePaciente, resetarSenhaPaciente, definirPinPaciente };

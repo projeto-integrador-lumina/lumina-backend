@@ -31,7 +31,7 @@ const Auth = (req, res, next) => {
             req.loggedUser = {
                 id: data.id,               
                 usuario: data.usuario,
-                tipo: data.tipo,           
+                tipo: data.tipo,          
                 idFono: data.idFono,       
                 idPaciente: data.idPaciente 
             };

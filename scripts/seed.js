@@ -37,8 +37,8 @@ const run = async () => {
     }
 
     const docs = await Palavra.find({ texto: { $in: palavras.map((p) => p.texto) } });
-    const NIVEL_1 = ["touro", "cerca", "peru"]; // palavras de fala do nível 1, na ordem do jogo
-    const ids = NIVEL_1.map((texto) => docs.find((d) => d.texto === texto)._id); // mantém a ordem
+    const NIVEL_1 = ["touro", "cerca", "peru"]; 
+    const ids = NIVEL_1.map((texto) => docs.find((d) => d.texto === texto)._id); 
     await Nivel.findOneAndUpdate({ numero: 1 }, { numero: 1, nome: "A fazenda", palavras: ids }, { upsert: true });
 
     for (const i of itens) {
