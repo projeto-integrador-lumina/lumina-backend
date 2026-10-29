@@ -1,20 +1,37 @@
 import mensagemService from "../services/mensagemService.js";
 import pacienteService from "../services/pacienteService.js";
+import usuarioController from "./UsuarioController.js";
+import { pacienteDaFono } from "../utils/acesso.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
-import {ObjectId} from "mongodb";
+const JWTSecret = usuarioController.JWTSecret;
 
-// a fono participa das conversas dela; o paciente (PWA, o responsável) das conversas do paciente
-const participa = (conversa, { tipo, idFono, idPaciente }) =>
-    tipo === "Fono" ? conversa.id_fono.toString() === idFono : conversa.id_paciente.toString() === idPaciente;
+const MAX_ERROS_PIN = 5;
+const BLOQUEIO_MIN = 15;
+const VALIDADE_TOKEN_S = 600; 
 
-// o remetente vem do token, nunca do corpo da requisição
-const remetenteDe = (tipo) => (tipo === "Fono" ? "Fono" : "Responsavel");
+const textoValido = (t) => typeof t === "string" && t.trim().length > 0 && t.trim().length <= 1000;
 
-const getAllConversa = async (req, res) => {
+
+const getConversas = async (req, res) => {
     try {
-        const { tipo, idFono, idPaciente } = req.loggedUser;
-        const filtro = tipo === "Fono" ? { id_fono: idFono } : { id_paciente: idPaciente };
-        const conversas = await mensagemService.getConversas(filtro);
+        const pacientes = await pacienteService.getAll(req.loggedUser.idFono);
+        const resumo = await mensagemService.resumoDaFono(req.loggedUser.idFono);
+
+        const conversas = pacientes
+            .filter((p) => resumo.has(String(p._id)))
+            .map((p) => {
+                const r = resumo.get(String(p._id));
+                return {
+                    id_paciente: p._id,
+                    nome: `${p.nome} ${p.sobrenome}`,
+                    ultima: { texto: r.ultima.texto, autor: r.ultima.autor, createdAt: r.ultima.createdAt },
+                    nao_lidas: r.nao_lidas
+                };
+            })
+            .sort((a, b) => b.ultima.createdAt - a.ultima.createdAt);
+
         res.status(200).json({conversas});
     } catch (error) {
         console.log(error);
@@ -22,59 +39,14 @@ const getAllConversa = async (req, res) => {
     }
 };
 
-// Fono: envia { id_paciente }. Paciente: não envia nada (usa o próprio id e a fono dele).
-const createConversa = async (req, res) => {
-    try {
-        const { tipo, idFono, idPaciente } = req.loggedUser;
-        const id_paciente = tipo === "Fono" ? req.body.id_paciente : idPaciente;
-
-        if (!id_paciente) {
-            return res.status(400).json({error: "Informe o id_paciente."});
-        }
-        if (!ObjectId.isValid(id_paciente)) {
-            return res.status(400).json({error: "ID do paciente inválido."});
-        }
-
-        const paciente = await pacienteService.getOne(id_paciente);
-        if (!paciente || !paciente.ativo) {
-            return res.status(404).json({error: "Paciente não encontrado."});
-        }
-        if (tipo === "Fono" && paciente.id_fono.toString() !== idFono) {
-            return res.status(403).json({error: "Você não tem permissão para este paciente."});
-        }
-
-        const id_fono = paciente.id_fono;
-        const existente = await mensagemService.getConversaDaDupla(id_fono, id_paciente);
-        if (existente) {
-            return res.status(200).json({conversa: existente});
-        }
-        const conversa = await mensagemService.CreateConversa(id_fono, id_paciente);
-        res.status(201).json({message: "Conversa criada com sucesso!", conversa});
-    } catch (error) {
-        console.log(error);
-        if (error.code === 11000) {
-            return res.status(409).json({error: "Essa conversa já existe."});
-        }
-        res.status(500).json({error: "Erro ao criar conversa."});
-    }
-};
-
 const getMensagens = async (req, res) => {
     try {
-        const id = req.params.id;
-        if (ObjectId.isValid(id)) {
-            const conversa = await mensagemService.getConversa(id);
-            if (!conversa) {
-                return res.status(404).json({error: "Conversa não encontrada."});
-            }
-            if (!participa(conversa, req.loggedUser)) {
-                return res.status(403).json({error: "Você não tem permissão para ver esta conversa."});
-            }
-            const mensagens = await mensagemService.getMensagens(id);
-            res.status(200).json({mensagens});
-        } else {
-            res.status(400).json({error: "ID inválido."});
-        }
+        const acesso = await pacienteDaFono(req.params.id_paciente, req.loggedUser.idFono);
+        if (acesso.error) return res.status(acesso.status).json({error: acesso.error});
+
+        const mensagens = await mensagemService.getConversa(acesso.paciente._id);
+        await mensagemService.marcarLidas(acesso.paciente._id, "responsavel"); // a fono leu
+        res.status(200).json({mensagens});
     } catch (error) {
         console.log(error);
         res.status(500).json({error: "Erro ao buscar mensagens."});
@@ -83,85 +55,86 @@ const getMensagens = async (req, res) => {
 
 const createMensagem = async (req, res) => {
     try {
-        const id = req.params.id;
-        if (ObjectId.isValid(id)) {
-            const conteudo = String(req.body.conteudo || "").trim();
-            if (!conteudo) {
-                return res.status(400).json({error: "A mensagem não pode estar vazia."});
-            }
-            const conversa = await mensagemService.getConversa(id);
-            if (!conversa) {
-                return res.status(404).json({error: "Conversa não encontrada."});
-            }
-            if (!participa(conversa, req.loggedUser)) {
-                return res.status(403).json({error: "Você não tem permissão para esta conversa."});
-            }
-            const mensagem = await mensagemService.CreateMensagem(id, remetenteDe(req.loggedUser.tipo), conteudo);
-            res.status(201).json({message: "Mensagem enviada com sucesso!", mensagem});
-        } else {
-            res.status(400).json({error: "ID inválido."});
+        if (!textoValido(req.body.texto)) {
+            return res.status(400).json({error: "Digite uma mensagem de até 1000 caracteres."});
         }
+        const acesso = await pacienteDaFono(req.params.id_paciente, req.loggedUser.idFono);
+        if (acesso.error) return res.status(acesso.status).json({error: acesso.error});
+
+        const mensagem = await mensagemService.Create(acesso.paciente._id, req.loggedUser.idFono, "fono", req.body.texto);
+        res.status(201).json({mensagem});
     } catch (error) {
         console.log(error);
-        if (error.name === "ValidationError") {
-            return res.status(400).json({error: "Dados inválidos. Confira os campos."});
-        }
         res.status(500).json({error: "Erro ao enviar mensagem."});
     }
 };
 
-// só quem RECEBEU a mensagem pode marcá-la como lida
-const marcarLida = async (req, res) => {
+
+const desbloquearMensagens = async (req, res) => {
     try {
-        const id = req.params.id;
-        if (ObjectId.isValid(id)) {
-            const mensagem = await mensagemService.getMensagem(id);
-            if (!mensagem) {
-                return res.status(404).json({error: "Mensagem não encontrada."});
-            }
-            const conversa = await mensagemService.getConversa(mensagem.id_conversa);
-            if (!conversa || !participa(conversa, req.loggedUser)) {
-                return res.status(403).json({error: "Você não tem permissão para esta mensagem."});
-            }
-            if (mensagem.remetente === remetenteDe(req.loggedUser.tipo)) {
-                return res.status(400).json({error: "Você não pode marcar a própria mensagem como lida."});
-            }
-            const atualizada = await mensagemService.marcarLida(id);
-            res.status(200).json({mensagem: atualizada});
-        } else {
-            res.status(400).json({error: "ID inválido."});
+        const pin = String(req.body.pin || "");
+        const paciente = await pacienteService.getComPin(req.loggedUser.idPaciente);
+
+        if (!paciente || !paciente.pin_responsavel) {
+            return res.status(409).json({error: "O responsável ainda não tem PIN. Peça para a fonoaudióloga cadastrar."});
         }
+
+        if (paciente.pin_bloqueado_ate && paciente.pin_bloqueado_ate > new Date()) {
+            const minutos = Math.ceil((paciente.pin_bloqueado_ate - new Date()) / 60000);
+            return res.status(429).json({error: `Muitas tentativas. Tente novamente em ${minutos} minuto(s).`});
+        }
+
+        if (!bcrypt.compareSync(pin, paciente.pin_responsavel)) {
+            const erros = (paciente.pin_tentativas || 0) + 1;
+            if (erros >= MAX_ERROS_PIN) {
+                await pacienteService.registrarErroPin(paciente._id, 0, new Date(Date.now() + BLOQUEIO_MIN * 60000));
+                return res.status(429).json({error: `Muitas tentativas. Tente novamente em ${BLOQUEIO_MIN} minutos.`});
+            }
+            await pacienteService.registrarErroPin(paciente._id, erros, null);
+            return res.status(401).json({error: "PIN incorreto."});
+        }
+
+        await pacienteService.zerarErrosPin(paciente._id);
+
+        const token = jwt.sign(
+            { idPaciente: String(paciente._id), scope: "mensagens" },
+            JWTSecret,
+            { expiresIn: VALIDADE_TOKEN_S }
+        );
+        res.status(200).json({token_responsavel: token, expira_em_segundos: VALIDADE_TOKEN_S});
     } catch (error) {
         console.log(error);
-        res.status(500).json({error: "Erro ao marcar mensagem como lida."});
+        res.status(500).json({error: "Erro ao validar PIN."});
     }
 };
 
-// só quem ENVIOU a mensagem pode apagá-la
-const deleteMensagem = async (req, res) => {
+const getMensagensApp = async (req, res) => {
     try {
-        const id = req.params.id;
-        if (ObjectId.isValid(id)) {
-            const mensagem = await mensagemService.getMensagem(id);
-            if (!mensagem) {
-                return res.status(404).json({error: "Mensagem não encontrada."});
-            }
-            const conversa = await mensagemService.getConversa(mensagem.id_conversa);
-            if (!conversa || !participa(conversa, req.loggedUser)) {
-                return res.status(403).json({error: "Você não tem permissão para esta mensagem."});
-            }
-            if (mensagem.remetente !== remetenteDe(req.loggedUser.tipo)) {
-                return res.status(403).json({error: "Você só pode apagar as suas próprias mensagens."});
-            }
-            await mensagemService.deleteMensagem(id);
-            res.status(200).json({message: "Mensagem deletada com sucesso!"});
-        } else {
-            res.status(400).json({error: "ID inválido."});
-        }
+        const paciente = await pacienteService.getOne(req.loggedUser.idPaciente);
+        const mensagens = await mensagemService.getConversa(paciente._id);
+        await mensagemService.marcarLidas(paciente._id, "fono"); 
+        res.status(200).json({mensagens});
     } catch (error) {
         console.log(error);
-        res.status(500).json({error: "Erro ao deletar mensagem."});
+        res.status(500).json({error: "Erro ao buscar mensagens."});
     }
 };
 
-export default { getAllConversa, createConversa, getMensagens, createMensagem, marcarLida, deleteMensagem };
+const createMensagemApp = async (req, res) => {
+    try {
+        if (!textoValido(req.body.texto)) {
+            return res.status(400).json({error: "Digite uma mensagem de até 1000 caracteres."});
+        }
+        const paciente = await pacienteService.getOne(req.loggedUser.idPaciente);
+        const mensagem = await mensagemService.Create(paciente._id, paciente.id_fono, "responsavel", req.body.texto);
+        res.status(201).json({mensagem});
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({error: "Erro ao enviar mensagem."});
+    }
+};
+
+export default {
+    getConversas, getMensagens, createMensagem,
+    desbloquearMensagens, getMensagensApp, createMensagemApp
+};

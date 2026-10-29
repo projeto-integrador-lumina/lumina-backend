@@ -95,7 +95,6 @@ const getNivel = async (req, res) => {
     }
 };
 
-
 const embaralhar = (lista) => {
     const a = [...lista];
     for (let i = a.length - 1; i > 0; i--) {
@@ -129,6 +128,7 @@ const getOpcoes = async (req, res) => {
         res.status(500).json({error: "Erro ao montar as opções."});
     }
 };
+
 
 const createTentativa = async (req, res) => {
     try {
@@ -179,7 +179,7 @@ const createTentativa = async (req, res) => {
             acertou,
             silabas: silabasGravadas,
             id_escolhida: tipo === "escolha" ? id_escolhida : null,
-            duracao_ms: Math.min(Math.round(duracao_ms || 0), 10 * 60 * 1000), // no máximo 10 min por tentativa
+            duracao_ms: Math.min(Math.round(duracao_ms || 0), 10 * 60 * 1000), 
             id_atividade
         });
         res.status(201).json(resultado);

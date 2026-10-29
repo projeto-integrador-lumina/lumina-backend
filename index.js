@@ -22,14 +22,12 @@ import mensagemRoutes from "./routes/mensagemRoutes.js";
 import relatorioRoutes from "./routes/relatorioRoutes.js";
 import appRoutes from "./routes/appRoutes.js";
 
-
 const app = express();
 
 app.use(cors);
 app.use(express.urlencoded({extended: false}));
 app.use(express.json());
 
-// dashboard (fono)
 app.use("/api", usuarioRoutes);
 app.use("/api", fonoaudiologoRoutes);
 app.use("/api", pacienteRoutes);

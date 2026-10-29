@@ -2,8 +2,10 @@ import Paciente from "../models/Paciente.js";
 import usuarioService from "./usuarioService.js";
 
 class pacienteService {
-    async getAll(id_fono) {
-        return await Paciente.find({ id_fono, ativo: true }).sort({ nome: 1 });
+    async getAll(id_fono, ativo = true) {
+        const filtro = { id_fono };
+        if (ativo !== null) filtro.ativo = ativo;
+        return await Paciente.find(filtro).sort({ nome: 1 });
     }
 
     async Create(nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, id_fono, id_login, alvo_atual) {
@@ -11,17 +13,21 @@ class pacienteService {
         return await newPaciente.save();
     }
 
-    async delete(id) {
-        const paciente = await Paciente.findByIdAndUpdate(id, { ativo: false });
+    async setAtivo(id, ativo) {
+        const paciente = await Paciente.findByIdAndUpdate(id, { ativo });
         if (paciente) {
-            await usuarioService.setAtivo(paciente.id_login, false);
+            await usuarioService.setAtivo(paciente.id_login, ativo);
         }
+    }
+
+    async delete(id) {
+        await this.setAtivo(id, false);
     }
 
     async update(id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual) {
         return await Paciente.findByIdAndUpdate(
             id,
-            { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual }, 
+            { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual }, // undefined é ignorado
             { returnDocument: "after", runValidators: true }
         );
     }

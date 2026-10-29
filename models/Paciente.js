@@ -10,6 +10,7 @@ const responsavelSchema = new mongoose.Schema({
 const pacienteSchema = new mongoose.Schema({
     id_fono: { type: mongoose.Schema.Types.ObjectId, ref: "Fonoaudiologo", required: true, index: true },
     id_login: { type: mongoose.Schema.Types.ObjectId, ref: "Usuario", required: true, unique: true },
+
     nome: { type: String, required: true, trim: true },
     sobrenome: { type: String, required: true, trim: true },
     data_nasc: { type: Date, required: true },
@@ -19,13 +20,10 @@ const pacienteSchema = new mongoose.Schema({
     endereco: String,
     ativo: { type: Boolean, default: true },
     responsavel: { type: responsavelSchema, required: true },
-
     alvo_atual: String, 
-
     pin_responsavel: { type: String, select: false },
     pin_tentativas: { type: Number, default: 0 },
     pin_bloqueado_ate: Date,
-
     xp: { type: Number, default: 0 },
     moedas: { type: Number, default: 0 },
     inventario: [{ type: mongoose.Schema.Types.ObjectId, ref: "Item" }],

@@ -16,7 +16,6 @@ class appService {
     async home(paciente) {
         const hoje = hojeLocal();
         const segunda = segundaDaSemana(hoje);
-
         const tentativas = await tentativaService.getDesde(paciente._id, inicioDoDia(somaDias(hoje, -59)));
         const dias = new Set(tentativas.map((t) => diaLocal(t.createdAt)));
 
@@ -76,17 +75,18 @@ class appService {
         });
     }
 
-    async registrarTentativa(paciente, palavra, acertosPorSilaba, duracao_ms, id_atividade) {
-        const silabas = palavra.silabas.map((texto, i) => ({ texto, acertou: acertosPorSilaba[i] }));
-        const acertou = silabas.every((s) => s.acertou);
-
-        const primeiraVez = acertou && !(await tentativaService.jaAcertou(paciente._id, palavra._id));
+    async registrarTentativa(paciente, palavra, dados) {
+        const { tipo, acertou, silabas, id_escolhida, duracao_ms, id_atividade } = dados;
+        const primeiraVez = tipo === "fala" && acertou &&
+            !(await tentativaService.jaAcertou(paciente._id, palavra._id));
 
         await tentativaService.Create({
             id_paciente: paciente._id,
             id_palavra: palavra._id,
             id_atividade: id_atividade || null,
+            tipo,
             silabas,
+            id_escolhida: id_escolhida || null,
             acertou,
             duracao_ms
         });
@@ -108,6 +108,7 @@ class appService {
         }
 
         return {
+            tipo,
             acertou,
             silabas,
             ganhos: { xp, moedas },

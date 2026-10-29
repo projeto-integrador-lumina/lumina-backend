@@ -1,59 +1,33 @@
-import Conversa from "../models/Conversa.js";
 import Mensagem from "../models/Mensagem.js";
 
 class mensagemService {
-    // ---------- Conversas ----------
-    async getConversas(filtro = {}) {
-        return await Conversa.find(filtro).sort({ ultima_mensagem_em: -1, createdAt: -1 });
+    async Create(id_paciente, id_fono, autor, texto) {
+        const nova = new Mensagem({ id_paciente, id_fono, autor, texto });
+        return await nova.save();
     }
 
-    async getConversa(id) {
-        return await Conversa.findById(id);
+    async getConversa(id_paciente) {
+        const msgs = await Mensagem.find({ id_paciente }).sort({ createdAt: -1 }).limit(200);
+        return msgs.reverse();
     }
 
-    async getConversaDaDupla(id_fono, id_paciente) {
-        return await Conversa.findOne({ id_fono, id_paciente });
+    async marcarLidas(id_paciente, autor) {
+        await Mensagem.updateMany({ id_paciente, autor, lida: false }, { lida: true });
     }
 
-    async CreateConversa(id_fono, id_paciente) {
-        const newConversa = new Conversa({ id_fono, id_paciente });
-        return await newConversa.save();
+    async contarNaoLidas(id_paciente, autor) {
+        return await Mensagem.countDocuments({ id_paciente, autor, lida: false });
     }
 
-    // ---------- Mensagens ----------
-    async getMensagens(id_conversa) {
-        return await Mensagem.find({ id_conversa }).sort({ createdAt: 1 });
-    }
-
-    async getMensagem(id) {
-        return await Mensagem.findById(id);
-    }
-
-    // salva a mensagem e atualiza a "ultimaMensagem" da conversa
-    async CreateMensagem(id_conversa, remetente, conteudo) {
-        const newMensagem = new Mensagem({ id_conversa, remetente, conteudo });
-        const mensagem = await newMensagem.save();
-        await Conversa.findByIdAndUpdate(id_conversa, {
-            ultima_mensagem: mensagem.conteudo,
-            ultima_mensagem_em: mensagem.createdAt
-        });
-        return mensagem;
-    }
-
-    async marcarLida(id) {
-        return await Mensagem.findByIdAndUpdate(id, { lida: true }, { returnDocument: "after" });
-    }
-
-    // apaga a mensagem e recalcula a última mensagem da conversa
-    async deleteMensagem(id) {
-        const mensagem = await Mensagem.findByIdAndDelete(id);
-        if (mensagem) {
-            const ultima = await Mensagem.findOne({ id_conversa: mensagem.id_conversa }).sort({ createdAt: -1 });
-            await Conversa.findByIdAndUpdate(mensagem.id_conversa, {
-                ultima_mensagem: ultima ? ultima.conteudo : "",
-                ultima_mensagem_em: ultima ? ultima.createdAt : null
-            });
+    async resumoDaFono(id_fono) {
+        const msgs = await Mensagem.find({ id_fono }).sort({ createdAt: -1 }).limit(2000);
+        const resumo = new Map();
+        for (const m of msgs) {
+            const chave = String(m.id_paciente);
+            if (!resumo.has(chave)) resumo.set(chave, { ultima: m, nao_lidas: 0 });
+            if (m.autor === "responsavel" && !m.lida) resumo.get(chave).nao_lidas++;
         }
+        return resumo;
     }
 };
 

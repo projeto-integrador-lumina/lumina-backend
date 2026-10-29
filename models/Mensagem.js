@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
 
 const mensagemSchema = new mongoose.Schema({
-    id_conversa: { type: mongoose.Schema.Types.ObjectId, ref: "Conversa", required: true, index: true },
-    remetente: { type: String, enum: ["Fono", "Responsavel"], required: true },
-    conteudo: { type: String, required: true, trim: true },
+    id_paciente: { type: mongoose.Schema.Types.ObjectId, ref: "Paciente", required: true, index: true },
+    id_fono: { type: mongoose.Schema.Types.ObjectId, ref: "Fonoaudiologo", required: true, index: true },
+    autor: { type: String, enum: ["fono", "responsavel"], required: true },
+    texto: { type: String, required: true, trim: true, maxlength: 1000 },
     lida: { type: Boolean, default: false }
 }, { timestamps: true });
 
