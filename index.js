@@ -1,6 +1,8 @@
 import express from "express";
 import mongoose from "./config/db-connection.js";
 import cors from "./middlewares/cors.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import Fonoaudiologo from "./models/Fonoaudiologo.js";
 import Paciente from "./models/Paciente.js";
@@ -27,6 +29,11 @@ const app = express();
 app.use(cors);
 app.use(express.urlencoded({extended: false}));
 app.use(express.json());
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/api", usuarioRoutes);
 app.use("/api", fonoaudiologoRoutes);

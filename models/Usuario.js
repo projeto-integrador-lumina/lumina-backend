@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
     precisa_trocar_senha: { type: Boolean, default: false }
 }, { timestamps: true });
 
+
 const Usuario = mongoose.model('Usuario', userSchema);
 
 export default Usuario;
