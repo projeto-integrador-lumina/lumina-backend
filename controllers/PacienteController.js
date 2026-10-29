@@ -2,6 +2,7 @@ import pacienteService from "../services/pacienteService.js";
 import usuarioService from "../services/usuarioService.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import fs from "fs";
 
 import {ObjectId} from "mongodb";
 
@@ -64,9 +65,12 @@ const getAllPaciente = async (req, res) => {
 const createPaciente = async (req, res) => {
     let login = null;
     try {
-        const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual, pin_responsavel} = req.body;
+        const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, responsavel, alvo_atual, pin_responsavel} = req.body;
+
+        const foto_perfil = req.file ? `/uploads/${req.file.filename}` : null;
 
         if (pin_responsavel !== undefined && !PIN_VALIDO.test(String(pin_responsavel))) {
+            removerArquivo(req);
             return res.status(400).json({error: "O PIN do responsável deve ter de 4 a 6 números."});
         }
         if (!nome || !sobrenome || !data_nasc || !responsavel || !responsavel.nome) {
@@ -90,6 +94,7 @@ const createPaciente = async (req, res) => {
             login: { usuario: username, senha: senhaProvisoria }
         });
     } catch (error) {
+        removerArquivo(req);
         if (login) await usuarioService.delete(login._id);
 
         console.log(error);
@@ -121,11 +126,21 @@ const deletePaciente = desativarPaciente;
 const updatePaciente = async (req, res) => {
     try {
         const paciente = await carregar(req, res, { exigirAtivo: true });
-        if (!paciente) return;
-        const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual } = req.body;
+        if (!paciente) {
+            removerArquivo(req);
+            return;
+        }
+        const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, responsavel, alvo_atual } = req.body;
+        const foto_perfil = req.file ? `/uploads/${req.file.filename}` : undefined;
         await pacienteService.update(paciente._id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual);
+
+         if (req.file && paciente.foto_perfil) {
+            fs.unlink(paciente.foto_perfil.replace(/^\//, ""), () => {});
+        }
+
         res.status(200).json({message: "Paciente atualizado com sucesso!"});
     } catch (error) {
+        removerArquivo(req);
         console.log(error);
         if (error.name === "ValidationError") {
             return res.status(400).json({error: "Dados inválidos. Confira os campos."});
