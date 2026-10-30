@@ -5,6 +5,8 @@ import Auth, { soFono } from "../middlewares/Auth.js";
 
 fonoaudiologoRoutes.post('/fonoaudiologos', fonoaudiologoController.createFonoaudiologo);
 
+fonoaudiologoRoutes.get('/fonoaudiologos/me/configuracoes', Auth, soFono, fonoaudiologoController.getConfiguracoes);
+fonoaudiologoRoutes.put('/fonoaudiologos/me/configuracoes', Auth, soFono, fonoaudiologoController.putConfiguracoes);
 fonoaudiologoRoutes.get('/fonoaudiologos/me', Auth, soFono, fonoaudiologoController.getMeFonoaudiologo);
 fonoaudiologoRoutes.put('/fonoaudiologos/me', Auth, soFono, fonoaudiologoController.updateFonoaudiologo);
 

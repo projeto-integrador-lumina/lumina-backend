@@ -2,7 +2,7 @@ import appService from "../services/appService.js";
 import pacienteService from "../services/pacienteService.js";
 import palavraService from "../services/palavraService.js";
 import nivelService from "../services/nivelService.js";
-import atividadeService from "../services/atividadeService.js";
+import atividadeService from "../services/atividadeConfService.js";
 import tentativaService from "../services/tentativaService.js";
 import { idValido } from "../utils/acesso.js";
 import { idade } from "../utils/data.js";

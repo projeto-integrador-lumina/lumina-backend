@@ -78,4 +78,25 @@ const updateFonoaudiologo = async (req, res) => {
     }
 };
 
-export default { createFonoaudiologo, getMeFonoaudiologo, updateFonoaudiologo };
+const getConfiguracoes = async(req,res)=> {
+    try {const fono=await fonoaudiologoService.getOne(req.loggedUser.idFono);if(!fono)return res.status(404).json({error:"Fonoaudiólogo não encontrado."});
+    res.json({configuracoes:fono.configuracoes});}catch(e){res.status(500).json({error:"Erro ao consultar configurações."});}
+};
+
+const putConfiguracoes = async(req,res)=> {
+    try {
+        const campos=["modo_escuro","notificacoes","backup_automatico","sessao_automatica","idioma","tempo_padrao","nivel_inicial","formato_relatorio"];
+        const dados=req.body;
+        if(!dados||typeof dados!=="object"||Array.isArray(dados)||Object.keys(dados).some(k=>!campos.includes(k)))
+            return res.status(400).json({error:"Campos inválidos."});
+        const Fono=(await import("../models/Fonoaudiologo.js")).default;
+        const fono=await Fono.findById(req.loggedUser.idFono);if(!fono)
+            return res.status(404).json({error:"Fonoaudiólogo não encontrado."});
+        for(const campo of Object.keys(dados))fono.configuracoes[campo]=dados[campo];
+        await fono.save();
+        res.json({configuracoes:fono.configuracoes});
+    } catch(e){
+        if(e.name==="ValidationError"||e.name==="CastError")return res.status(400).json({error:"Configurações inválidas."});res.status(500).json({error:"Erro ao salvar configurações."});}
+};
+
+export default { createFonoaudiologo, getMeFonoaudiologo, updateFonoaudiologo, getConfiguracoes, putConfiguracoes };

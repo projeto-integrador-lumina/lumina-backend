@@ -1,5 +1,5 @@
 import pacienteService from "./pacienteService.js";
-import atividadeService from "./atividadeService.js";
+import atividadeService from "./atividadeConfService.js";
 import tentativaService from "./tentativaService.js";
 import notificacaoService from "./notificacaoService.js";
 import mensagemService from "./mensagemService.js";
@@ -140,3 +140,4 @@ class appService {
 };
 
 export default new appService();
+

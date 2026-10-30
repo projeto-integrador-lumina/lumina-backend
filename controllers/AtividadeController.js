@@ -1,4 +1,4 @@
-import atividadeService from "../services/atividadeConfService.js";
+import atividadeService from "../services/atividadeService.js";
 import pacienteService from "../services/pacienteService.js";
 
 import {ObjectId} from "mongodb";

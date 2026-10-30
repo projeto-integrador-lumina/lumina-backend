@@ -1,8 +1,8 @@
-import Atividade from "../models/Atividade.js";
+import AtividadeConf from "../models/AtividadeConf.js";
 
 class atividadeConfService {
     async Create(id_fono, id_paciente, tipo, titulo, palavras) {
-        const nova = new Atividade({ id_fono, id_paciente, tipo, titulo, palavras });
+        const nova = new AtividadeConf({ id_fono, id_paciente, tipo, titulo, palavras });
         return await nova.save();
     }
 
@@ -10,23 +10,23 @@ class atividadeConfService {
         const filtro = { id_fono };
         if (id_paciente) filtro.id_paciente = id_paciente;
         if (apenasPendentes) filtro.concluida_em = null;
-        return await Atividade.find(filtro).sort({ createdAt: -1 });
+        return await AtividadeConf.find(filtro).sort({ createdAt: -1 });
     }
 
     async getPendentesDoPaciente(id_paciente) {
-        return await Atividade.find({ id_paciente, concluida_em: null }).sort({ createdAt: 1 });
+        return await AtividadeConf.find({ id_paciente, concluida_em: null }).sort({ createdAt: 1 });
     }
 
     async getOne(id) {
-        return await Atividade.findById(id);
+        return await AtividadeConf.findById(id);
     }
 
     async delete(id) {
-        await Atividade.findByIdAndDelete(id);
+        await AtividadeConf.findByIdAndDelete(id);
     }
 
     async concluir(id) {
-        return await Atividade.findOneAndUpdate(
+        return await AtividadeConf.findOneAndUpdate(
             { _id: id, concluida_em: null },
             { concluida_em: new Date() },
             { returnDocument: "after" }
@@ -34,4 +34,4 @@ class atividadeConfService {
     }
 };
 
-export default new atividadeService();
+export default new atividadeConfService();
