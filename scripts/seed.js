@@ -5,7 +5,7 @@ import Item from "../models/Item.js";
 
 const palavras = [
     { texto: "touro", silabas: ["TOU", "RO"], fonema: "/r/", categoria_som: "liquido" },
-    { texto: "cerca", silabas: ["CER", "CA"], fonema: "/s/", categoria_som: "fricativo" },
+    { texto: "cerca", silabas: ["CER", "CA"], fonema: "/r/", categoria_som: "liquido" },
     { texto: "peru",  silabas: ["PE", "RU"],  fonema: "/r/", categoria_som: "liquido" },
     { texto: "vaca",  silabas: ["VA", "CA"],  fonema: "/v/", categoria_som: "fricativo" },
     { texto: "pato",  silabas: ["PA", "TO"],  fonema: "/p/", categoria_som: "explosivo" },

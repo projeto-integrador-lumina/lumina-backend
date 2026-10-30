@@ -1,62 +1,35 @@
-import atividadeService from "../services/atividadeService.js";
-import palavraService from "../services/palavraService.js";
-import notificacaoService from "../services/notificacaoService.js";
-import { idValido, pacienteDaFono } from "../utils/acesso.js";
+import atividadeService from "../services/atividadeConfService.js";
+import pacienteService from "../services/pacienteService.js";
 
-const TITULO_PADRAO = { treino: "Treinamento de Fonema", missao: "Missão do dia" };
+import {ObjectId} from "mongodb";
 
-const createAtividade = async (req, res) => {
-    try {
-        const { id_paciente, tipo, titulo, palavras } = req.body;
-
-        if (!["treino", "missao"].includes(tipo)) {
-            return res.status(400).json({error: 'tipo deve ser "treino" ou "missao".'});
-        }
-        if (!Array.isArray(palavras) || palavras.length < 1 || palavras.length > 20 || !palavras.every(idValido)) {
-            return res.status(400).json({error: "Envie de 1 a 20 ids de palavras."});
-        }
-        if (titulo !== undefined && (typeof titulo !== "string" || titulo.length > 80)) {
-            return res.status(400).json({error: "Título inválido (máximo de 80 caracteres)."});
-        }
-
-        const acesso = await pacienteDaFono(id_paciente, req.loggedUser.idFono);
-        if (acesso.error) return res.status(acesso.status).json({error: acesso.error});
-
-        const ids = [...new Set(palavras)];
-        const encontradas = await palavraService.getByIds(ids);
-        if (encontradas.length !== ids.length) {
-            return res.status(400).json({error: "Alguma das palavras não existe."});
-        }
-
-        const atividade = await atividadeService.Create(
-            req.loggedUser.idFono, acesso.paciente._id, tipo, (titulo || "").trim() || TITULO_PADRAO[tipo], ids
-        );
-
-        await notificacaoService.Create(
-            acesso.paciente._id,
-            "atividade",
-            tipo === "missao"
-                ? "Sua fonoaudióloga enviou uma nova missão para você! Vamos conferir?"
-                : "Sua fonoaudióloga enviou um novo treino para você! Vamos conferir?"
-        );
-
-        res.status(201).json({message: "Atividade atribuída com sucesso!", atividade});
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({error: "Erro ao atribuir atividade."});
-    }
+const pacienteDaFono = async (id_paciente, idFono) => {
+    if (!ObjectId.isValid(id_paciente)) return {status: 400, error: "ID do paciente inválido."};
+    const paciente = await pacienteService.getOne(id_paciente);
+    if (!paciente || !paciente.ativo) return {status: 404, error: "Paciente não encontrado."};
+    if (paciente.id_fono.toString() !== idFono) return {status: 403, error: "Você não tem permissão para este paciente."};
+    return {paciente};
 };
+
+const podeVer = (atividade, { tipo, idFono, idPaciente }) =>
+    tipo === "Fono" ? atividade.id_fono.toString() === idFono : atividade.id_paciente.toString() === idPaciente;
 
 const getAllAtividade = async (req, res) => {
     try {
-        const { id_paciente, pendentes } = req.query;
-
-        if (id_paciente) {
-            const acesso = await pacienteDaFono(id_paciente, req.loggedUser.idFono);
-            if (acesso.error) return res.status(acesso.status).json({error: acesso.error});
+        const { tipo, idFono, idPaciente } = req.loggedUser;
+        let atividades;
+        if (tipo === "Fono") {
+            const { id_paciente } = req.query;
+            const filtro = { id_fono: idFono };
+            if (id_paciente) {
+                const acesso = await pacienteDaFono(id_paciente, idFono);
+                if (acesso.error) return res.status(acesso.status).json({error: acesso.error});
+                filtro.id_paciente = id_paciente;
+            }
+            atividades = await atividadeService.getAll(filtro);
+        } else {
+            atividades = await atividadeService.getAll({ id_paciente: idPaciente });
         }
-
-        const atividades = await atividadeService.getAllDaFono(req.loggedUser.idFono, id_paciente, pendentes === "true");
         res.status(200).json({atividades});
     } catch (error) {
         console.log(error);
@@ -64,46 +37,94 @@ const getAllAtividade = async (req, res) => {
     }
 };
 
-const atividadeDaFono = async (req, res) => {
-    if (!idValido(req.params.id)) {
-        res.status(400).json({error: "ID inválido."});
-        return null;
-    }
-    const atividade = await atividadeService.getOne(req.params.id);
-    if (!atividade) {
-        res.status(404).json({error: "Atividade não encontrada."});
-        return null;
-    }
-    if (atividade.id_fono.toString() !== req.loggedUser.idFono) {
-        res.status(403).json({error: "Você não tem permissão para acessar esta atividade."});
-        return null;
-    }
-    return atividade;
-};
-
 const getOneAtividade = async (req, res) => {
     try {
-        const atividade = await atividadeDaFono(req, res);
-        if (atividade) res.status(200).json({atividade});
+        const id = req.params.id;
+        if (ObjectId.isValid(id)) {
+            const atividade = await atividadeService.getOne(id);
+            if (!atividade) {
+                return res.status(404).json({error: "Atividade não encontrada."});
+            }
+            if (!podeVer(atividade, req.loggedUser)) {
+                return res.status(403).json({error: "Você não tem permissão para ver esta atividade."});
+            }
+            res.status(200).json({atividade});
+        } else {
+            res.status(400).json({error: "ID inválido."});
+        }
     } catch (error) {
         console.log(error);
         res.status(500).json({error: "Erro ao buscar atividade."});
     }
 };
 
-const deleteAtividade = async (req, res) => {
+const createAtividade = async (req, res) => {
     try {
-        const atividade = await atividadeDaFono(req, res);
-        if (!atividade) return;
-        if (atividade.concluida_em) {
-            return res.status(409).json({error: "Atividades concluídas ficam no histórico e não podem ser excluídas."});
+        const { id_paciente, fonema, posicao, frequencia, tempo_pratica } = req.body;
+        if (!id_paciente || !fonema || !posicao) {
+            return res.status(400).json({error: "Preencha paciente, fonema e posição."});
         }
-        await atividadeService.delete(atividade._id);
-        res.status(200).json({message: "Atividade removida com sucesso!"});
+
+        const acesso = await pacienteDaFono(id_paciente, req.loggedUser.idFono);
+        if (acesso.error) return res.status(acesso.status).json({error: acesso.error});
+
+        const atividade = await atividadeService.Create(id_paciente, req.loggedUser.idFono, fonema, posicao, frequencia, tempo_pratica);
+        res.status(201).json({message: "Atividade criada com sucesso!", atividade});
     } catch (error) {
         console.log(error);
-        res.status(500).json({error: "Erro ao remover atividade."});
+        if (error.name === "ValidationError" || error.name === "CastError") {
+            return res.status(400).json({error: "Dados inválidos. Confira os campos."});
+        }
+        res.status(500).json({error: "Erro ao criar atividade."});
     }
 };
 
-export default { createAtividade, getAllAtividade, getOneAtividade, deleteAtividade };
+const updateAtividade = async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (ObjectId.isValid(id)) {
+            const atividade = await atividadeService.getOne(id);
+            if (!atividade) {
+                return res.status(404).json({error: "Atividade não encontrada."});
+            }
+            if (atividade.id_fono.toString() !== req.loggedUser.idFono) {
+                return res.status(403).json({error: "Você não tem permissão para atualizar esta atividade."});
+            }
+            const { fonema, posicao, frequencia, tempo_pratica } = req.body;
+            const atualizada = await atividadeService.update(id, fonema, posicao, frequencia, tempo_pratica);
+            res.status(200).json({message: "Atividade atualizada com sucesso!", atividade: atualizada});
+        } else {
+            res.status(400).json({error: "ID inválido."});
+        }
+    } catch (error) {
+        console.log(error);
+        if (error.name === "ValidationError" || error.name === "CastError") {
+            return res.status(400).json({error: "Dados inválidos. Confira os campos."});
+        }
+        res.status(500).json({error: "Erro ao atualizar atividade."});
+    }
+};
+
+const deleteAtividade = async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (ObjectId.isValid(id)) {
+            const atividade = await atividadeService.getOne(id);
+            if (!atividade) {
+                return res.status(404).json({error: "Atividade não encontrada."});
+            }
+            if (atividade.id_fono.toString() !== req.loggedUser.idFono) {
+                return res.status(403).json({error: "Você não tem permissão para deletar esta atividade."});
+            }
+            await atividadeService.delete(id);
+            res.status(200).json({message: "Atividade deletada com sucesso!"});
+        } else {
+            res.status(400).json({error: "ID inválido."});
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({error: "Erro ao deletar atividade."});
+    }
+};
+
+export default { getAllAtividade, getOneAtividade, createAtividade, updateAtividade, deleteAtividade };
