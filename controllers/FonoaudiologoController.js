@@ -1,9 +1,15 @@
 import fonoaudiologoService from "../services/fonoaudiologoService.js";
 import usuarioService from "../services/usuarioService.js";
+import pacienteService from "../services/pacienteService.js";
 import usuarioController from "./UsuarioController.js";
 import bcrypt from "bcrypt";
+import fs from "fs";
 
 const SENHA_MIN = usuarioController.SENHA_MIN;
+
+const removerArquivo = (req) => {
+    if (req.file && req.file.path) fs.unlink(req.file.path, () => {});
+};
 
 const createFonoaudiologo = async (req, res) => {
     let login = null;
@@ -51,7 +57,17 @@ const getMeFonoaudiologo = async (req, res) => {
         if (!fono) {
             return res.status(404).json({ error: "Fonoaudiólogo não encontrado." });
         }
-        res.status(200).json({ fonoaudiologo: fono });
+        const login = await usuarioService.getById(fono.id_login);
+        const pacientes = await pacienteService.getAll(fono._id);
+        res.status(200).json({
+            fonoaudiologo: fono, // createdAt = "membro desde" (tempo na plataforma)
+            conta: {
+                tipo: login?.tipo || "Fono",
+                ativo: login ? login.ativo : true,
+                ultimo_acesso: login?.ultimo_acesso || null
+            },
+            estatisticas: { pacientes_ativos: pacientes.length }
+        });
     } catch (error) {
         console.log(error);
         res.status(500).json({ error: "Erro ao buscar fonoaudiólogo." });
@@ -60,13 +76,23 @@ const getMeFonoaudiologo = async (req, res) => {
 
 const updateFonoaudiologo = async (req, res) => {
     try {
-        const { nome, email, crfa, telefone, foto_perfil } = req.body;
-        const fono = await fonoaudiologoService.update(req.loggedUser.idFono, nome, email, crfa, telefone, foto_perfil);
-        if (!fono) {
+        const { nome, email, crfa, telefone } = req.body;
+        const atual = await fonoaudiologoService.getOne(req.loggedUser.idFono);
+        if (!atual) {
+            removerArquivo(req);
             return res.status(404).json({ error: "Fonoaudiólogo não encontrado." });
+        }
+
+        // multipart (campo "foto_perfil") ou, como antes, um texto/URL no JSON
+        const foto_perfil = req.file ? `/uploads/${req.file.filename}` : req.body.foto_perfil;
+        const fono = await fonoaudiologoService.update(req.loggedUser.idFono, nome, email, crfa, telefone, foto_perfil);
+
+        if (req.file && atual.foto_perfil && atual.foto_perfil.startsWith("/uploads/")) {
+            fs.unlink(atual.foto_perfil.replace(/^\//, ""), () => {});
         }
         res.status(200).json({ message: "Perfil atualizado com sucesso!", fonoaudiologo: fono });
     } catch (error) {
+        removerArquivo(req);
         console.log(error);
         if (error.code === 11000) {
             return res.status(409).json({ error: "Esse CRFa já está cadastrado." });

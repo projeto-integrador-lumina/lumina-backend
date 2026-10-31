@@ -1,6 +1,6 @@
 import express from "express";
 import mongoose from "./config/db-connection.js";
-import cors from "./middlewares/cors.js";
+import cors from "./middlewares/Cors.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -18,13 +18,13 @@ import Notificacao from "./models/Notificacao.js";
 import usuarioRoutes from "./routes/usuarioRoutes.js";
 import fonoaudiologoRoutes from "./routes/fonoaudiologoRoutes.js";
 import pacienteRoutes from "./routes/pacienteRoutes.js";
-import palavraRoutes from "./routes/palavraRoutes.js";
 import atividadeRoutes from "./routes/atividadeRoutes.js";
-import atividadeConfRoutes from "./routes/atividadeConfRoutes.js";
-import "./models/AtividadeConf.js";
+import tarefaRoutes from "./routes/tarefaRoutes.js";
+import "./models/Tarefa.js";
 import mensagemRoutes from "./routes/mensagemRoutes.js";
 import relatorioRoutes from "./routes/relatorioRoutes.js";
 import appRoutes from "./routes/appRoutes.js";
+import agendaRoutes from "./routes/agendaRoutes.js";
 
 const app = express();
 
@@ -36,16 +36,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/assets", express.static(path.join(__dirname, "public", "assets")));
 
 app.use("/api", usuarioRoutes);
 app.use("/api", fonoaudiologoRoutes);
 app.use("/api", pacienteRoutes);
-app.use("/api", palavraRoutes);
 app.use("/api", atividadeRoutes);
-app.use("/api", atividadeConfRoutes);
+app.use("/api", tarefaRoutes);
 app.use("/api", mensagemRoutes);
 app.use("/api", relatorioRoutes);
 app.use("/api", appRoutes);
+app.use("/api", agendaRoutes);
 
 const port = process.env.PORT || 8080;
 app.listen(port, (error) => {

@@ -22,6 +22,10 @@ class usuarioService {
         await Usuario.findByIdAndUpdate(id, { senha, precisa_trocar_senha });
     }
 
+    async registrarAcesso(id) {
+        await Usuario.findByIdAndUpdate(id, { ultimo_acesso: new Date() });
+    }
+
     async setAtivo(id, ativo) {
         await Usuario.findByIdAndUpdate(id, { ativo });
     }

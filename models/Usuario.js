@@ -5,7 +5,8 @@ const userSchema = new mongoose.Schema({
     senha: { type: String, required: true }, 
     tipo: { type: String, enum: ["Fono", "Paciente"], required: true },
     ativo: { type: Boolean, default: true },
-    precisa_trocar_senha: { type: Boolean, default: false }
+    precisa_trocar_senha: { type: Boolean, default: false },
+    ultimo_acesso: { type: Date, default: null }
 }, { timestamps: true });
 
 

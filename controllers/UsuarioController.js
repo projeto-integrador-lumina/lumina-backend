@@ -52,6 +52,8 @@ const loginUsuario = async (req, res) => {
             nome = paciente.nome;
         }
 
+        await usuarioService.registrarAcesso(user._id);
+
         const expiresIn = manter ? '30d' : '48h';
 
         jwt.sign(payload, JWTSecret, { expiresIn }, (error, token) => {

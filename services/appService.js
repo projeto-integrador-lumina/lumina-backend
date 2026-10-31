@@ -1,5 +1,5 @@
 import pacienteService from "./pacienteService.js";
-import atividadeService from "./atividadeConfService.js";
+import tarefaService from "./tarefaService.js";
 import tentativaService from "./tentativaService.js";
 import notificacaoService from "./notificacaoService.js";
 import mensagemService from "./mensagemService.js";
@@ -34,7 +34,7 @@ class appService {
         const [notificacoes, mensagens, pendentes] = await Promise.all([
             notificacaoService.contarNaoLidas(paciente._id),
             mensagemService.contarNaoLidas(paciente._id, "fono"),
-            atividadeService.getPendentesDoPaciente(paciente._id)
+            tarefaService.getPendentesDoPaciente(paciente._id)
         ]);
 
         return {
@@ -140,4 +140,3 @@ class appService {
 };
 
 export default new appService();
-

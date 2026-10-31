@@ -18,24 +18,35 @@ class relatorioService {
         return await pacienteService.getAll(id_fono);
     }
 
-    async resumo(pacientes, periodo) {
+    async totalCadastrados(id_fono) {
+        return (await pacienteService.getAll(id_fono, null)).length;
+    }
+
+    async resumo(pacientes, periodo, totalCadastrados) {
         const ids = pacientes.map((p) => p._id);
         const hoje = hojeLocal();
         const fim = inicioDoDia(somaDias(hoje, 1));
+        const qtd = Math.max(pacientes.length, 1);
 
         const ultimos7 = await tentativaService.getPorPeriodo(ids, inicioDoDia(somaDias(hoje, -6)), fim);
         const doPeriodo = await tentativaService.getPorPeriodo(ids, periodo.inicio, periodo.fim);
 
-        const por_dia = Array.from({ length: 7 }, (_, i) => {
-            const data = somaDias(hoje, i - 6);
+        const dia = (data) => {
             const doDia = ultimos7.filter((t) => diaLocal(t.createdAt) === data);
+            const min = minutos(doDia.reduce((s, t) => s + (t.duracao_ms || 0), 0));
             return {
                 data,
                 dia: nomeDoDia(data),
                 tentativas: doDia.length,
-                minutos: minutos(doDia.reduce((s, t) => s + (t.duracao_ms || 0), 0))
+                minutos: min,                                   
+                minutos_media: Math.round((min / qtd) * 10) / 10 
             };
-        });
+        };
+
+        const por_dia = Array.from({ length: 7 }, (_, i) => dia(somaDias(hoje, i - 6)));
+
+        const segunda = segundaDaSemana(hoje);
+        const semana_atual = Array.from({ length: 7 }, (_, i) => dia(somaDias(segunda, i)));
 
         const treinouNaSemana = new Set(ultimos7.map((t) => String(t.id_paciente)));
 
@@ -50,7 +61,8 @@ class relatorioService {
             .map((p) => ({
                 _id: p._id,
                 nome: `${p.nome} ${p.sobrenome}`,
-                ultimo_treino: ultimoTreino.get(String(p._id)) || null 
+                foto_perfil: p.foto_perfil || null,
+                ultimo_treino: ultimoTreino.get(String(p._id)) || null
             }));
 
         const top_pacientes = pacientes
@@ -60,21 +72,79 @@ class relatorioService {
                 return {
                     _id: p._id,
                     nome: `${p.nome} ${p.sobrenome}`,
+                    foto_perfil: p.foto_perfil || null,
                     tentativas: t.length,
                     acertos,
-                    taxa_acerto: pct(acertos, t.length)
+                    taxa_acerto: pct(acertos, t.length),
+                    minutos: minutos(t.reduce((s, x) => s + (x.duracao_ms || 0), 0))
                 };
             })
             .filter((p) => p.tentativas > 0)
-            .sort((a, b) => b.tentativas - a.tentativas)
+            .sort((a, b) => b.minutos - a.minutos || b.tentativas - a.tentativas)
             .slice(0, 5);
+
+        const acertosTotal = doPeriodo.filter((t) => t.acertou).length;
+
+        const pares = new Set(doPeriodo.map((t) => diaLocal(t.createdAt) + "|" + t.id_paciente));
+        const msTotal = doPeriodo.reduce((s, t) => s + (t.duracao_ms || 0), 0);
 
         return {
             periodo: { de: periodo.de, ate: periodo.ate },
+            total_cadastrados: totalCadastrados ?? pacientes.length,
             pacientes_ativos: pacientes.length,
+            media_acertos: pct(acertosTotal, doPeriodo.length),
+            tempo_medio_min: pares.size ? minutos(msTotal / pares.size) : 0,
             por_dia,
+            semana_atual,
             inativos,
             top_pacientes
+        };
+    }
+    async ranking(pacientes, periodo) {
+        const tentativas = await tentativaService.getPorPeriodo(pacientes.map((p) => p._id), periodo.inicio, periodo.fim);
+
+        const lista = pacientes
+            .map((p) => {
+                const t = tentativas.filter((x) => String(x.id_paciente) === String(p._id));
+                const semanas = new Map();
+                for (const x of t) {
+                    const inicio = segundaDaSemana(diaLocal(x.createdAt));
+                    if (!semanas.has(inicio)) semanas.set(inicio, { semana: inicio, tentativas: 0, acertos: 0 });
+                    const w = semanas.get(inicio);
+                    w.tentativas++;
+                    if (x.acertou) w.acertos++;
+                }
+                const por_semana = [...semanas.values()]
+                    .sort((a, b) => a.semana.localeCompare(b.semana))
+                    .map((w) => ({ ...w, taxa_acerto: pct(w.acertos, w.tentativas) }));
+
+                const primeira = por_semana[0];
+                const ultima = por_semana[por_semana.length - 1];
+                const temEvolucao = por_semana.length >= 2;
+
+                return {
+                    _id: p._id,
+                    nome: `${p.nome} ${p.sobrenome}`,
+                    foto_perfil: p.foto_perfil || null,
+                    tentativas: t.length,
+                    minutos: minutos(t.reduce((s, x) => s + (x.duracao_ms || 0), 0)),
+                    taxa_inicial: primeira ? primeira.taxa_acerto : null,
+                    taxa_atual: ultima ? ultima.taxa_acerto : null,
+                    evolucao: temEvolucao ? ultima.taxa_acerto - primeira.taxa_acerto : null,
+                    por_semana
+                };
+            })
+            .filter((p) => p.tentativas > 0)
+            .sort((a, b) => b.tentativas - a.tentativas);
+
+        const { por_semana, ...maior } = [...lista]
+            .filter((p) => p.evolucao !== null)
+            .sort((a, b) => b.evolucao - a.evolucao)[0] || {};
+
+        return {
+            periodo: { de: periodo.de, ate: periodo.ate },
+            maior_evolucao: maior._id ? maior : null,
+            pacientes: lista
         };
     }
 

@@ -5,6 +5,9 @@ import crypto from "crypto";
 import fs from "fs";
 
 import {ObjectId} from "mongodb";
+import { idade } from "../utils/data.js";
+
+const comIdade = (p) => ({ ...p.toJSON(), idade: idade(p.data_nasc) });
 
 const gerarUsernameUnico = async (nome) => {
     const base = String(nome || "")
@@ -21,6 +24,10 @@ const gerarUsernameUnico = async (nome) => {
 };
 
 const PIN_VALIDO = /^\d{4,6}$/;
+
+const removerArquivo = (req) => {
+    if (req.file && req.file.path) fs.unlink(req.file.path, () => {});
+};
 
 const gerarSenhaProvisoria = () => crypto.randomBytes(4).toString("hex");
 
@@ -54,7 +61,7 @@ const getAllPaciente = async (req, res) => {
         }
         const filtro = ativo === "false" ? false : ativo === "todos" ? null : true;
         const pacientes = await pacienteService.getAll(req.loggedUser.idFono, filtro);
-        res.status(200).json({pacientes});
+        res.status(200).json({pacientes: pacientes.map(comIdade)});
     } catch (error) {
         console.log (error);
         res.status(500).json({error: "Erro ao buscar Paciente."});
@@ -65,7 +72,7 @@ const getAllPaciente = async (req, res) => {
 const createPaciente = async (req, res) => {
     let login = null;
     try {
-        const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, responsavel, alvo_atual, pin_responsavel} = req.body;
+        const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, responsavel, pin_responsavel} = req.body; 
 
         const foto_perfil = req.file ? `/uploads/${req.file.filename}` : null;
 
@@ -74,6 +81,7 @@ const createPaciente = async (req, res) => {
             return res.status(400).json({error: "O PIN do responsável deve ter de 4 a 6 números."});
         }
         if (!nome || !sobrenome || !data_nasc || !responsavel || !responsavel.nome) {
+            removerArquivo(req);
             return res.status(400).json({error: "Preencha nome, sobrenome, data de nascimento e responsável."});
         }
 
@@ -82,7 +90,7 @@ const createPaciente = async (req, res) => {
         const hash = bcrypt.hashSync(senhaProvisoria, 10);
         login = await usuarioService.Create(username, hash, "Paciente", true);
 
-        const paciente = await pacienteService.Create(nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, req.loggedUser.idFono, login._id, alvo_atual);
+        const paciente = await pacienteService.Create(nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, req.loggedUser.idFono, login._id);
 
         if (pin_responsavel !== undefined) {
             await pacienteService.setPin(paciente._id, bcrypt.hashSync(String(pin_responsavel), 10));
@@ -130,9 +138,9 @@ const updatePaciente = async (req, res) => {
             removerArquivo(req);
             return;
         }
-        const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, responsavel, alvo_atual } = req.body;
+        const { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, responsavel } = req.body;
         const foto_perfil = req.file ? `/uploads/${req.file.filename}` : undefined;
-        await pacienteService.update(paciente._id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual);
+        await pacienteService.update(paciente._id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel);
 
          if (req.file && paciente.foto_perfil) {
             fs.unlink(paciente.foto_perfil.replace(/^\//, ""), () => {});
@@ -155,7 +163,7 @@ const getOnePaciente = async (req, res) => {
         if (!paciente) return;
         const login = await usuarioService.getById(paciente.id_login);
         res.status(200).json({
-            paciente,
+            paciente: comIdade(paciente),
             login: login ? { usuario: login.usuario, precisa_trocar_senha: login.precisa_trocar_senha } : null
         });
     } catch (error) {

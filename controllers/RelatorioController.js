@@ -32,7 +32,8 @@ const getResumo = async (req, res) => {
     try {
         const ctx = await preparar(req, res);
         if (!ctx) return;
-        res.status(200).json(await relatorioService.resumo(ctx.pacientes, ctx.periodo));
+        const total = req.query.id_paciente ? undefined : await relatorioService.totalCadastrados(req.loggedUser.idFono);
+        res.status(200).json(await relatorioService.resumo(ctx.pacientes, ctx.periodo, total));
     } catch (error) {
         console.log(error);
         res.status(500).json({error: "Erro ao gerar resumo."});
@@ -74,4 +75,15 @@ const getEvolucao = async (req, res) => {
     }
 };
 
-export default { getResumo, getFonema, getAtividade, getEvolucao };
+const getRanking = async (req, res) => {
+    try {
+        const ctx = await preparar(req, res);
+        if (!ctx) return;
+        res.status(200).json(await relatorioService.ranking(ctx.pacientes, ctx.periodo));
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({error: "Erro ao gerar ranking."});
+    }
+};
+
+export default { getResumo, getFonema, getAtividade, getEvolucao, getRanking };

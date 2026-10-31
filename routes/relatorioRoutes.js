@@ -7,5 +7,6 @@ relatorioRoutes.get('/relatorios/resumo', Auth, soFono, relatorioController.getR
 relatorioRoutes.get('/relatorios/fonema', Auth, soFono, relatorioController.getFonema);
 relatorioRoutes.get('/relatorios/atividade', Auth, soFono, relatorioController.getAtividade);
 relatorioRoutes.get('/relatorios/evolucao', Auth, soFono, relatorioController.getEvolucao);
+relatorioRoutes.get('/relatorios/ranking', Auth, soFono, relatorioController.getRanking);
 
 export default relatorioRoutes;

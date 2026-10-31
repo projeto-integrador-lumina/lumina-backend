@@ -2,7 +2,7 @@ import appService from "../services/appService.js";
 import pacienteService from "../services/pacienteService.js";
 import palavraService from "../services/palavraService.js";
 import nivelService from "../services/nivelService.js";
-import atividadeService from "../services/atividadeConfService.js";
+import tarefaService from "../services/tarefaService.js";
 import tentativaService from "../services/tentativaService.js";
 import { idValido } from "../utils/acesso.js";
 import { idade } from "../utils/data.js";
@@ -165,7 +165,7 @@ const createTentativa = async (req, res) => {
 
         if (id_atividade !== undefined && id_atividade !== null) {
             if (!idValido(id_atividade)) return res.status(400).json({error: "id_atividade inválido."});
-            const atividade = await atividadeService.getOne(id_atividade);
+            const atividade = await tarefaService.getOne(id_atividade);
             const valida = atividade &&
                 atividade.id_paciente.toString() === req.loggedUser.idPaciente &&
                 !atividade.concluida_em &&
@@ -192,7 +192,7 @@ const createTentativa = async (req, res) => {
 
 const getAtividades = async (req, res) => {
     try {
-        const pendentes = await atividadeService.getPendentesDoPaciente(req.loggedUser.idPaciente);
+        const pendentes = await tarefaService.getPendentesDoPaciente(req.loggedUser.idPaciente);
         res.status(200).json({
             atividades: pendentes.map((a) => ({
                 _id: a._id, tipo: a.tipo, titulo: a.titulo, total_palavras: a.palavras.length, createdAt: a.createdAt
@@ -209,7 +209,7 @@ const atividadeDoPaciente = async (req, res) => {
         res.status(400).json({error: "ID inválido."});
         return null;
     }
-    const atividade = await atividadeService.getOne(req.params.id);
+    const atividade = await tarefaService.getOne(req.params.id);
     if (!atividade || atividade.id_paciente.toString() !== req.loggedUser.idPaciente) {
         res.status(404).json({error: "Atividade não encontrada."});
         return null;
@@ -252,7 +252,7 @@ const concluirAtividade = async (req, res) => {
             return res.status(409).json({error: "Ainda faltam palavras para concluir.", faltam});
         }
 
-        const concluida = await atividadeService.concluir(atividade._id);
+        const concluida = await tarefaService.concluir(atividade._id);
         if (!concluida) return res.status(409).json({error: "Essa atividade já foi concluída."});
 
         const moedas = atividade.tipo === "missao" ? MOEDAS_MISSAO : MOEDAS_TREINO;

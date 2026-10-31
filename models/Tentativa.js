@@ -8,7 +8,7 @@ const silabaSchema = new mongoose.Schema({
 const tentativaSchema = new mongoose.Schema({
     id_paciente: { type: mongoose.Schema.Types.ObjectId, ref: "Paciente", required: true },
     id_palavra: { type: mongoose.Schema.Types.ObjectId, ref: "Palavra", required: true },
-    id_atividade: { type: mongoose.Schema.Types.ObjectId, ref: "AtividadeConf", default: null },
+    id_atividade: { type: mongoose.Schema.Types.ObjectId, ref: "Tarefa", default: null },
     tipo: { type: String, enum: ["fala", "escolha"], default: "fala" },
     silabas: [silabaSchema],                                                
     id_escolhida: { type: mongoose.Schema.Types.ObjectId, ref: "Palavra", default: null }, 

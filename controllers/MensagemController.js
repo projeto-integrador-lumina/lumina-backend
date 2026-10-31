@@ -25,7 +25,9 @@ const getConversas = async (req, res) => {
                 const r = resumo.get(String(p._id));
                 return {
                     id_paciente: p._id,
-                    nome: `${p.nome} ${p.sobrenome}`,
+                    nome: `${p.nome} ${p.sobrenome}`,      
+                    responsavel: p.responsavel?.nome || null, 
+                    foto_perfil: p.foto_perfil || null,
                     ultima: { texto: r.ultima.texto, autor: r.ultima.autor, createdAt: r.ultima.createdAt },
                     nao_lidas: r.nao_lidas
                 };
@@ -45,7 +47,7 @@ const getMensagens = async (req, res) => {
         if (acesso.error) return res.status(acesso.status).json({error: acesso.error});
 
         const mensagens = await mensagemService.getConversa(acesso.paciente._id);
-        await mensagemService.marcarLidas(acesso.paciente._id, "responsavel"); // a fono leu
+        await mensagemService.marcarLidas(acesso.paciente._id, "responsavel"); 
         res.status(200).json({mensagens});
     } catch (error) {
         console.log(error);

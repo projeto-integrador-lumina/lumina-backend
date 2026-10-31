@@ -5,7 +5,8 @@ const palavraSchema = new mongoose.Schema({
     silabas: { type: [String], required: true, validate: v => v.length > 0 }, 
     imagem_url: String,
     audio_url: String,
-    fonema: String,                                                          
+    fonema: String,
+    posicao_fonema: { type: String, enum: ["inicial", "medial", "final"] }, 
     categoria_som: { type: String, enum: ["liquido", "explosivo", "nasal", "fricativo"] }
 });
 

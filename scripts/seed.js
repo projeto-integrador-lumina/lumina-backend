@@ -4,12 +4,12 @@ import Nivel from "../models/Nivel.js";
 import Item from "../models/Item.js";
 
 const palavras = [
-    { texto: "touro", silabas: ["TOU", "RO"], fonema: "/r/", categoria_som: "líquido" },
-    { texto: "cerca", silabas: ["CER", "CA"], fonema: "/r/", categoria_som: "líquido" },
-    { texto: "peru",  silabas: ["PE", "RU"],  fonema: "/r/", categoria_som: "líquido" },
-    { texto: "vaca",  silabas: ["VA", "CA"],  fonema: "/v/", categoria_som: "fricativo" },
-    { texto: "pato",  silabas: ["PA", "TO"],  fonema: "/p/", categoria_som: "explosivo" },
-    { texto: "sapo",  silabas: ["SA", "PO"],  fonema: "/s/", categoria_som: "fricativo" }
+    { texto: "touro", silabas: ["TOU", "RO"], fonema: "/r/", posicao_fonema: "medial",  categoria_som: "liquido" },
+    { texto: "cerca", silabas: ["CER", "CA"], fonema: "/r/", posicao_fonema: "medial",  categoria_som: "liquido" },
+    { texto: "peru",  silabas: ["PE", "RU"],  fonema: "/r/", posicao_fonema: "medial",  categoria_som: "liquido" },
+    { texto: "vaca",  silabas: ["VA", "CA"],  fonema: "/v/", posicao_fonema: "inicial", categoria_som: "fricativo" },
+    { texto: "pato",  silabas: ["PA", "TO"],  fonema: "/p/", posicao_fonema: "inicial", categoria_som: "explosivo" },
+    { texto: "sapo",  silabas: ["SA", "PO"],  fonema: "/s/", posicao_fonema: "inicial", categoria_som: "fricativo" }
 ].map((p) => ({
     ...p,
     imagem_url: `/assets/${p.texto}.png`,
@@ -33,7 +33,7 @@ const itens = [
 
 const run = async () => {
     for (const p of palavras) {
-        await Palavra.findOneAndUpdate({ texto: p.texto }, p, { upsert: true });
+        await Palavra.findOneAndUpdate({ texto: p.texto }, p, { upsert: true, runValidators: true });
     }
 
     const docs = await Palavra.find({ texto: { $in: palavras.map((p) => p.texto) } });
@@ -42,7 +42,7 @@ const run = async () => {
     await Nivel.findOneAndUpdate({ numero: 1 }, { numero: 1, nome: "A fazenda", palavras: ids }, { upsert: true });
 
     for (const i of itens) {
-        await Item.findOneAndUpdate({ nome: i.nome }, i, { upsert: true });
+        await Item.findOneAndUpdate({ nome: i.nome }, i, { upsert: true, runValidators: true });
     }
 
     console.log(`Seed concluído: ${palavras.length} palavras, 1 nível (${NIVEL_1.length} palavras), ${itens.length} itens.`);

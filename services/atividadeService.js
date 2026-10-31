@@ -1,6 +1,6 @@
 import Atividade from "../models/Atividade.js";
 
-class atividadeConfService {
+class atividadeService {
     async getAll(filtro = {}) {
         return await Atividade.find(filtro).sort({ createdAt: -1 });
     }
@@ -9,15 +9,15 @@ class atividadeConfService {
         return await Atividade.findById(id);
     }
 
-    async Create(id_paciente, id_fono, fonema, posicao, frequencia, tempo_pratica) {
-        const newAtividade = new Atividade({ id_paciente, id_fono, fonema, posicao, frequencia, tempo_pratica });
-        return await newAtividade.save();
+    async Create(id_paciente, id_fono, dados) {
+        const nova = new Atividade({ id_paciente, id_fono, ...dados });
+        return await nova.save();
     }
 
-    async update(id, fonema, posicao, frequencia, tempo_pratica) {
+    async update(id, dados) {
         return await Atividade.findByIdAndUpdate(
             id,
-            { fonema, posicao, frequencia, tempo_pratica },
+            { $set: dados },
             { returnDocument: "after", runValidators: true }
         );
     }
@@ -27,4 +27,4 @@ class atividadeConfService {
     }
 };
 
-export default new atividadeConfService();
+export default new atividadeService();

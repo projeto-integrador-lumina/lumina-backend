@@ -8,5 +8,6 @@ atividadeRoutes.post('/atividades', Auth, soFono, atividadeController.createAtiv
 atividadeRoutes.get('/atividades/:id', Auth, atividadeController.getOneAtividade);
 atividadeRoutes.put('/atividades/:id', Auth, soFono, atividadeController.updateAtividade);
 atividadeRoutes.delete('/atividades/:id', Auth, soFono, atividadeController.deleteAtividade);
+atividadeRoutes.post('/atividades/:id/gerar', Auth, soFono, atividadeController.gerarTreino);
 
 export default atividadeRoutes;

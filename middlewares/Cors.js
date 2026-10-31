@@ -7,7 +7,8 @@ const bate = (permitida, origem) => {
 };
 
 const cors = (req, res, next) => {
-    const permitidas = (process.env.CORS_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const bruto = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || "";
+    const permitidas = bruto.split(",").map((s) => s.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
     const origem = req.headers.origin;
 
     if (origem && (permitidas.length === 0 || permitidas.some((p) => bate(p, origem)))) {
