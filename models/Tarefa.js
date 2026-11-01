@@ -7,7 +7,7 @@ const tarefaSchema = new mongoose.Schema({
     titulo: { type: String, trim: true, maxlength: 80 },
     palavras: [{ type: mongoose.Schema.Types.ObjectId, ref: "Palavra" }],
     concluida_em: { type: Date, default: null }
-}, { timestamps: true, collection: "atividadeconfs" }); // mantém a coleção antiga: não precisa migrar dados
+}, { timestamps: true, collection: "tarefas" }); 
 
 const Tarefa = mongoose.model('Tarefa', tarefaSchema);
 
