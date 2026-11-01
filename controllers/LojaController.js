@@ -1,122 +1,257 @@
+
 import itemService from "../services/itemService.js";
 import pacienteService from "../services/pacienteService.js";
 import { idValido } from "../utils/acesso.js";
 
 const SLOTS = ["camiseta", "calca", "calcado"];
 
-const pacienteLogado = (req) => pacienteService.getOne(req.loggedUser.idPaciente);
+const pacienteLogado = (req) => {
+  if (!req.loggedUser?.idPaciente) return null;
+  return pacienteService.getOne(req.loggedUser.idPaciente);
+};
 
 const getLoja = async (req, res) => {
-    try {
-        const { categoria } = req.query;
-        if (categoria && !SLOTS.includes(categoria)) {
-            return res.status(400).json({error: `categoria deve ser: ${SLOTS.join(", ")}.`});
-        }
-        const paciente = await pacienteLogado(req);
-        const meus = new Set(paciente.inventario.map(String));
-        const itens = await itemService.getAll(categoria);
+  try {
+    const { categoria } = req.query;
 
-        res.status(200).json({
-            moedas: paciente.moedas,
-            itens: itens.map((i) => ({
-                _id: i._id, nome: i.nome, categoria: i.categoria, imagem_url: i.imagem_url, preco: i.preco,
-                comprado: meus.has(String(i._id))
-            }))
-        });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({error: "Erro ao buscar a loja."});
+    if (categoria && !SLOTS.includes(categoria)) {
+      return res.status(400).json({
+        error: `Categoria deve ser: ${SLOTS.join(", ")}.`
+      });
     }
+
+    const paciente = await pacienteLogado(req);
+
+    if (!paciente) {
+      return res.status(404).json({
+        error: "Paciente não encontrado."
+      });
+    }
+
+    const meus = new Set((paciente.inventario || []).map(String));
+    const itens = await itemService.getAll(categoria);
+
+    return res.status(200).json({
+      moedas: paciente.moedas ?? 0,
+      itens: itens.map((item) => ({
+        _id: item._id,
+        nome: item.nome,
+        categoria: item.categoria,
+        imagem_url: item.imagem_url,
+        preco: item.preco,
+        comprado: meus.has(String(item._id))
+      }))
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Erro ao buscar a loja."
+    });
+  }
 };
 
 const comprarItem = async (req, res) => {
-    try {
-        const { id_item } = req.body;
-        if (!idValido(id_item)) return res.status(400).json({error: "id_item inválido."});
+  try {
+    const { id_item } = req.body || {};
 
-        const item = await itemService.getOne(id_item);
-        if (!item) return res.status(404).json({error: "Item não encontrado."});
-
-        const paciente = await pacienteLogado(req);
-        if (paciente.inventario.some((i) => String(i) === String(item._id))) {
-            return res.status(409).json({error: "Você já tem esse item."});
-        }
-
-        const atualizado = await pacienteService.comprar(paciente._id, item._id, item.preco);
-        if (!atualizado) {
-            const agora = await pacienteLogado(req);
-            const jaTem = agora.inventario.some((i) => String(i) === String(item._id));
-            return jaTem
-                ? res.status(409).json({error: "Você já tem esse item."})
-                : res.status(400).json({error: "Moedas insuficientes."});
-        }
-
-        res.status(200).json({message: `Você comprou: ${item.nome}!`, moedas: atualizado.moedas});
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({error: "Erro ao comprar item."});
+    if (!idValido(id_item)) {
+      return res.status(400).json({
+        error: "Item inválido."
+      });
     }
+
+    const item = await itemService.getOne(id_item);
+
+    if (!item) {
+      return res.status(404).json({
+        error: "Item não encontrado."
+      });
+    }
+
+    const paciente = await pacienteLogado(req);
+
+    if (!paciente) {
+      return res.status(404).json({
+        error: "Paciente não encontrado."
+      });
+    }
+
+    const jaPossui = (paciente.inventario || []).some(
+      (id) => String(id) === String(item._id)
+    );
+
+    if (jaPossui) {
+      return res.status(409).json({
+        error: "Você já tem esse item."
+      });
+    }
+
+    const atualizado = await pacienteService.comprar(
+      paciente._id,
+      item._id,
+      item.preco
+    );
+
+    if (!atualizado) {
+      const agora = await pacienteLogado(req);
+
+      if (!agora) {
+        return res.status(404).json({
+          error: "Paciente não encontrado."
+        });
+      }
+
+      const comprouEnquantoIsso = (agora.inventario || []).some(
+        (id) => String(id) === String(item._id)
+      );
+
+      if (comprouEnquantoIsso) {
+        return res.status(409).json({
+          error: "Você já tem esse item."
+        });
+      }
+
+      return res.status(400).json({
+        error: "Moedas insuficientes."
+      });
+    }
+
+    return res.status(200).json({
+      message: `Você comprou: ${item.nome}!`,
+      moedas: atualizado.moedas,
+      id_item: item._id
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Erro ao comprar item."
+    });
+  }
 };
 
 const getInventario = async (req, res) => {
-    try {
-        const paciente = await pacienteLogado(req);
-        const itens = await itemService.getByIds(paciente.inventario);
-        const porId = new Map(itens.map((i) => [String(i._id), i]));
-        const slot = (id) => (id ? porId.get(String(id)) || null : null);
+  try {
+    const paciente = await pacienteLogado(req);
 
-        res.status(200).json({
-            moedas: paciente.moedas,
-            itens,
-            avatar: {
-                genero: paciente.avatar.genero,
-                camiseta: slot(paciente.avatar.camiseta),
-                calca: slot(paciente.avatar.calca),
-                calcado: slot(paciente.avatar.calcado)
-            }
-        });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({error: "Erro ao buscar inventário."});
+    if (!paciente) {
+      return res.status(404).json({
+        error: "Paciente não encontrado."
+      });
     }
+
+    const itens = await itemService.getByIds(paciente.inventario || []);
+    const porId = new Map(
+      itens.map((item) => [String(item._id), item])
+    );
+
+    const encontrarItem = (id) => {
+      if (!id) return null;
+      return porId.get(String(id)) || null;
+    };
+
+    const avatar = paciente.avatar || {};
+
+    return res.status(200).json({
+      moedas: paciente.moedas ?? 0,
+      itens,
+      avatar: {
+        genero: avatar.genero || "F",
+        camiseta: encontrarItem(avatar.camiseta),
+        calca: encontrarItem(avatar.calca),
+        calcado: encontrarItem(avatar.calcado)
+      }
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Erro ao buscar inventário."
+    });
+  }
 };
 
 const updateAvatar = async (req, res) => {
-    try {
-        const paciente = await pacienteLogado(req);
-        const meus = new Set(paciente.inventario.map(String));
-        const campos = {};
+  try {
+    const paciente = await pacienteLogado(req);
 
-        if (req.body.genero !== undefined) {
-            if (!["F", "M"].includes(req.body.genero)) return res.status(400).json({error: 'genero deve ser "F" ou "M".'});
-            campos["avatar.genero"] = req.body.genero;
-        }
-
-        for (const slot of SLOTS) {
-            const valor = req.body[slot];
-            if (valor === undefined) continue;
-            if (valor === null) {
-                campos["avatar." + slot] = null;
-                continue;
-            }
-            if (!idValido(valor)) return res.status(400).json({error: `${slot}: id inválido.`});
-            if (!meus.has(valor)) return res.status(403).json({error: `Você ainda não tem esse item (${slot}).`});
-
-            const [item] = await itemService.getByIds([valor]);
-            if (!item || item.categoria !== slot) {
-                return res.status(400).json({error: `Esse item não é da categoria "${slot}".`});
-            }
-            campos["avatar." + slot] = item._id;
-        }
-
-        if (!Object.keys(campos).length) return res.status(400).json({error: "Nada para alterar."});
-
-        await pacienteService.setCampos(paciente._id, campos);
-        res.status(200).json({message: "Avatar atualizado!"});
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({error: "Erro ao atualizar avatar."});
+    if (!paciente) {
+      return res.status(404).json({
+        error: "Paciente não encontrado."
+      });
     }
+
+    const corpo = req.body || {};
+    const meus = new Set((paciente.inventario || []).map(String));
+    const campos = {};
+
+    if (corpo.genero !== undefined) {
+      if (!["F", "M"].includes(corpo.genero)) {
+        return res.status(400).json({
+          error: 'O gênero deve ser "F" ou "M".'
+        });
+      }
+
+      campos["avatar.genero"] = corpo.genero;
+    }
+
+    for (const slot of SLOTS) {
+      const valor = corpo[slot];
+
+      if (valor === undefined) continue;
+
+      if (valor === null) {
+        campos[`avatar.${slot}`] = null;
+        continue;
+      }
+
+      if (!idValido(valor)) {
+        return res.status(400).json({
+          error: `Item inválido para ${slot}.`
+        });
+      }
+
+      if (!meus.has(String(valor))) {
+        return res.status(403).json({
+          error: "Você ainda não tem essa roupa."
+        });
+      }
+
+      const item = await itemService.getOne(valor);
+
+      if (!item || item.categoria !== slot) {
+        return res.status(400).json({
+          error: "Essa roupa não pertence à categoria selecionada."
+        });
+      }
+
+      campos[`avatar.${slot}`] = item._id;
+    }
+
+    if (Object.keys(campos).length === 0) {
+      return res.status(400).json({
+        error: "Nenhuma alteração foi enviada."
+      });
+    }
+
+    await pacienteService.setCampos(paciente._id, campos);
+
+    return res.status(200).json({
+      message: "Avatar atualizado!"
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Erro ao atualizar avatar."
+    });
+  }
 };
 
-export default { getLoja, comprarItem, getInventario, updateAvatar };
+export default {
+  getLoja,
+  comprarItem,
+  getInventario,
+  updateAvatar
+};

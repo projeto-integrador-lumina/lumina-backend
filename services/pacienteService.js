@@ -1,76 +1,203 @@
+
 import Paciente from "../models/Paciente.js";
+import Item from "../models/Item.js";
 import usuarioService from "./usuarioService.js";
 
+const ROUPAS_INICIAIS = [
+  "Camiseta regata",
+  "Cropped preto",
+  "Cropped lolá",
+  "Camiseta coração",
+  "Calça mom",
+  "Saia",
+  "Calça preta",
+  "Shorts jeans",
+  "Tênis azul",
+  "Chinelo",
+  "Sapatilha",
+  "Tênis salmão"
+];
+
 class pacienteService {
-    async getAll(id_fono, ativo = true) {
-        const filtro = { id_fono };
-        if (ativo !== null) filtro.ativo = ativo;
-        return await Paciente.find(filtro).sort({ nome: 1 });
+  async getAll(id_fono, ativo = true) {
+    const filtro = { id_fono };
+
+    if (ativo !== null) {
+      filtro.ativo = ativo;
     }
 
-    async Create(nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, id_fono, id_login, alvo_atual) {
-        const newPaciente = new Paciente({ nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, id_fono, id_login, alvo_atual });
-        return await newPaciente.save();
+    return await Paciente.find(filtro).sort({ nome: 1 });
+  }
+
+  async Create(
+    nome,
+    sobrenome,
+    endereco,
+    data_nasc,
+    sexo,
+    nivel_gravidade,
+    foto_perfil,
+    responsavel,
+    id_fono,
+    id_login,
+    alvo_atual
+  ) {
+    const itensIniciais = await Item.find({
+      nome: { $in: ROUPAS_INICIAIS }
+    }).select("_id nome");
+
+    if (itensIniciais.length !== ROUPAS_INICIAIS.length) {
+      throw new Error(
+        "As roupas iniciais não estão cadastradas. Execute o seed antes de criar pacientes."
+      );
     }
 
-    async setAtivo(id, ativo) {
-        const paciente = await Paciente.findByIdAndUpdate(id, { ativo });
-        if (paciente) {
-            await usuarioService.setAtivo(paciente.id_login, ativo);
-        }
-    }
+    const inventario = itensIniciais.map((item) => item._id);
 
-    async delete(id) {
-        await this.setAtivo(id, false);
-    }
+    const newPaciente = new Paciente({
+      nome,
+      sobrenome,
+      endereco,
+      data_nasc,
+      sexo,
+      nivel_gravidade,
+      foto_perfil,
+      responsavel,
+      id_fono,
+      id_login,
+      alvo_atual,
+      inventario,
+      avatar: {
+        genero: sexo === "M" ? "M" : "F",
+        camiseta: null,
+        calca: null,
+        calcado: null
+      }
+    });
 
-    async update(id, nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual) {
-        return await Paciente.findByIdAndUpdate(
-            id,
-            { nome, sobrenome, endereco, data_nasc, sexo, nivel_gravidade, foto_perfil, responsavel, alvo_atual }, // undefined é ignorado
-            { returnDocument: "after", runValidators: true }
-        );
-    }
+    return await newPaciente.save();
+  }
 
-    async getOne(id) {
-        return await Paciente.findById(id);
-    }
+  async setAtivo(id, ativo) {
+    const paciente = await Paciente.findByIdAndUpdate(id, { ativo });
 
-    async getByLogin(id_login) {
-        return await Paciente.findOne({ id_login });
+    if (paciente) {
+      await usuarioService.setAtivo(paciente.id_login, ativo);
     }
+  }
 
-    async setPin(id, hash) {
-        await Paciente.findByIdAndUpdate(id, { pin_responsavel: hash, pin_tentativas: 0, pin_bloqueado_ate: null });
-    }
+  async delete(id) {
+    await this.setAtivo(id, false);
+  }
 
-    async getComPin(id) {
-        return await Paciente.findById(id).select("+pin_responsavel");
-    }
+  async update(
+    id,
+    nome,
+    sobrenome,
+    endereco,
+    data_nasc,
+    sexo,
+    nivel_gravidade,
+    foto_perfil,
+    responsavel,
+    alvo_atual
+  ) {
+    return await Paciente.findByIdAndUpdate(
+      id,
+      {
+        nome,
+        sobrenome,
+        endereco,
+        data_nasc,
+        sexo,
+        nivel_gravidade,
+        foto_perfil,
+        responsavel,
+        alvo_atual
+      },
+      {
+        returnDocument: "after",
+        runValidators: true
+      }
+    );
+  }
 
-    async registrarErroPin(id, tentativas, bloqueado_ate) {
-        await Paciente.findByIdAndUpdate(id, { pin_tentativas: tentativas, pin_bloqueado_ate: bloqueado_ate });
-    }
+  async getOne(id) {
+    return await Paciente.findById(id);
+  }
 
-    async zerarErrosPin(id) {
-        await Paciente.findByIdAndUpdate(id, { pin_tentativas: 0, pin_bloqueado_ate: null });
-    }
+  async getByLogin(id_login) {
+    return await Paciente.findOne({ id_login });
+  }
 
-    async addGanhos(id, xp, moedas) {
-        return await Paciente.findByIdAndUpdate(id, { $inc: { xp, moedas } }, { returnDocument: "after" });
-    }
+  async setPin(id, hash) {
+    await Paciente.findByIdAndUpdate(id, {
+      pin_responsavel: hash,
+      pin_tentativas: 0,
+      pin_bloqueado_ate: null
+    });
+  }
 
-    async comprar(id, id_item, preco) {
-        return await Paciente.findOneAndUpdate(
-            { _id: id, moedas: { $gte: preco }, inventario: { $ne: id_item } },
-            { $inc: { moedas: -preco }, $push: { inventario: id_item } },
-            { returnDocument: "after" }
-        );
-    }
+  async getComPin(id) {
+    return await Paciente.findById(id).select("+pin_responsavel");
+  }
 
-    async setCampos(id, campos) {
-        return await Paciente.findByIdAndUpdate(id, { $set: campos }, { returnDocument: "after" });
-    }
-};
+  async registrarErroPin(id, tentativas, bloqueado_ate) {
+    await Paciente.findByIdAndUpdate(id, {
+      pin_tentativas: tentativas,
+      pin_bloqueado_ate: bloqueado_ate
+    });
+  }
+
+  async zerarErrosPin(id) {
+    await Paciente.findByIdAndUpdate(id, {
+      pin_tentativas: 0,
+      pin_bloqueado_ate: null
+    });
+  }
+
+  async addGanhos(id, xp, moedas) {
+    return await Paciente.findByIdAndUpdate(
+      id,
+      {
+        $inc: { xp, moedas }
+      },
+      {
+        returnDocument: "after"
+      }
+    );
+  }
+
+  async comprar(id, id_item, preco) {
+    return await Paciente.findOneAndUpdate(
+      {
+        _id: id,
+        moedas: { $gte: preco },
+        inventario: { $ne: id_item }
+      },
+      {
+        $inc: { moedas: -preco },
+        $addToSet: { inventario: id_item }
+      },
+      {
+        returnDocument: "after",
+        runValidators: true
+      }
+    );
+  }
+
+  async setCampos(id, campos) {
+    return await Paciente.findByIdAndUpdate(
+      id,
+      {
+        $set: campos
+      },
+      {
+        returnDocument: "after",
+        runValidators: true
+      }
+    );
+  }
+}
 
 export default new pacienteService();

@@ -207,4 +207,49 @@ const definirPinPaciente = async (req, res) => {
     }
 };
 
-export default { getAllPaciente, createPaciente, deletePaciente, ativarPaciente, desativarPaciente, updatePaciente, getOnePaciente, resetarSenhaPaciente, definirPinPaciente };
+const getMeuPerfil = async (req, res) => {
+    try {
+        if (req.loggedUser.tipo !== "Paciente" || !req.loggedUser.idPaciente) {
+            return res.status(403).json({
+                error: "Acesso permitido apenas para pacientes."
+            });
+        }
+
+        const paciente = await pacienteService.getOne(req.loggedUser.idPaciente);
+
+        if (!paciente || !paciente.ativo) {
+            return res.status(404).json({
+                error: "Paciente não encontrado."
+            });
+        }
+
+        return res.status(200).json({
+            paciente: {
+                nome: paciente.nome,
+                sobrenome: paciente.sobrenome,
+                data_nasc: paciente.data_nasc,
+                idade: idade(paciente.data_nasc),
+                foto_perfil: paciente.foto_perfil
+            }
+        });
+    } catch (error) {
+        console.log(error);
+
+        return res.status(500).json({
+            error: "Erro ao buscar perfil do paciente."
+        });
+    }
+};
+
+export default {
+    getAllPaciente,
+    createPaciente,
+    deletePaciente,
+    ativarPaciente,
+    desativarPaciente,
+    updatePaciente,
+    getOnePaciente,
+    getMeuPerfil,
+    resetarSenhaPaciente,
+    definirPinPaciente
+};

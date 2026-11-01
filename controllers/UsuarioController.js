@@ -122,4 +122,86 @@ const reativarUsuario = async (req, res) => {
     }
 };
 
-export default { loginUsuario, trocarSenha, desativarUsuario, reativarUsuario, JWTSecret, SENHA_MIN };
+
+const buscarUsuarioRecuperacao = async (req, res) => {
+    try {
+        const usuario = limpa(req.body?.usuario);
+
+        if (!usuario) {
+            return res.status(400).json({
+                error: "Informe o nome de usuário."
+            });
+        }
+
+        const user = await usuarioService.getOne(usuario);
+
+        if (!user) {
+            return res.status(404).json({
+                error: "Usuário não encontrado."
+            });
+        }
+
+        return res.status(200).json({
+            encontrado: true,
+            usuario: user.usuario
+        });
+    } catch (error) {
+        console.log(error);
+
+        return res.status(500).json({
+            error: "Erro ao buscar usuário."
+        });
+    }
+};
+
+const redefinirSenhaAdministrativa = async (req, res) => {
+    try {
+        const usuario = limpa(req.body?.usuario);
+        const novaSenha = String(req.body?.novaSenha || "");
+
+        if (!usuario) {
+            return res.status(400).json({
+                error: "Informe o nome de usuário."
+            });
+        }
+
+        if (novaSenha.length < SENHA_MIN) {
+            return res.status(400).json({
+                error: `A nova senha precisa ter pelo menos ${SENHA_MIN} caracteres.`
+            });
+        }
+
+        const user = await usuarioService.getOne(usuario);
+
+        if (!user) {
+            return res.status(404).json({
+                error: "Usuário não encontrado."
+            });
+        }
+
+        const hash = await bcrypt.hash(novaSenha, 10);
+
+        await usuarioService.updateSenha(user._id, hash, false);
+
+        return res.status(200).json({
+            message: "Senha redefinida com sucesso!"
+        });
+    } catch (error) {
+        console.log(error);
+
+        return res.status(500).json({
+            error: "Erro ao redefinir senha."
+        });
+    }
+};
+
+export default {
+    loginUsuario,
+    trocarSenha,
+    desativarUsuario,
+    reativarUsuario,
+    buscarUsuarioRecuperacao,
+    redefinirSenhaAdministrativa,
+    JWTSecret,
+    SENHA_MIN
+};

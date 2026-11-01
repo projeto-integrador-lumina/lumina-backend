@@ -23,23 +23,33 @@ const palavras = [
 }));
 
 const itens = [
-    { nome: "Camiseta regata",  categoria: "camiseta", preco: 20 },
-    { nome: "Cropped preto",    categoria: "camiseta", preco: 25 },
-    { nome: "Cropped lolá",     categoria: "camiseta", preco: 40 },
-    { nome: "Camiseta coração", categoria: "camiseta", preco: 30 },
-    { nome: "Calça mom",        categoria: "calca",    preco: 30 },
-    { nome: "Saia",             categoria: "calca",    preco: 25 },
-    { nome: "Calça preta",      categoria: "calca",    preco: 30 },
-    { nome: "Shorts jeans",     categoria: "calca",    preco: 25 },
-    { nome: "Tênis azul",       categoria: "calcado",  preco: 35 },
-    { nome: "Chinelo",          categoria: "calcado",  preco: 15 },
-    { nome: "Sapatilha",        categoria: "calcado",  preco: 30 },
-    { nome: "Tênis salmão",     categoria: "calcado",  preco: 35 }
-].map((i) => ({ ...i, imagem_url: `/assets/itens/${i.nome.toLowerCase().replace(/\s+/g, "-")}.png` }));
+    { nome: "Camiseta regata", categoria: "camiseta", preco: 0, imagem_url: "regata.svg", inicial: true },
+    { nome: "Cropped preto", categoria: "camiseta", preco: 0, imagem_url: "cropped-preto.svg", inicial: true },
+    { nome: "Cropped lolá", categoria: "camiseta", preco: 0, imagem_url: "blusa-rosa.svg", inicial: true },
+    { nome: "Camiseta coração", categoria: "camiseta", preco: 0, imagem_url: "camiseta-coracao.svg", inicial: true },
+    { nome: "Calça mom", categoria: "calca", preco: 0, imagem_url: "jeans-mom.svg", inicial: true },
+    { nome: "Saia", categoria: "calca", preco: 0, imagem_url: "saia-preta.svg", inicial: true },
+    { nome: "Calça preta", categoria: "calca", preco: 0, imagem_url: "calca-preta.svg", inicial: true },
+    { nome: "Shorts jeans", categoria: "calca", preco: 0, imagem_url: "short-jeans.svg", inicial: true },
+    { nome: "Tênis azul", categoria: "calcado", preco: 0, imagem_url: "tennis.svg", inicial: true },
+    { nome: "Chinelo", categoria: "calcado", preco: 0, imagem_url: "chinelo.svg", inicial: true },
+    { nome: "Sapatilha", categoria: "calcado", preco: 0, imagem_url: "sapatilha.svg", inicial: true },
+    { nome: "Tênis salmão", categoria: "calcado", preco: 0, imagem_url: "tenis-salmao.svg", inicial: true },
+    { nome: "Cropped coração", categoria: "camiseta", preco: 5, imagem_url: "cropped-coracao.svg", inicial: false },
+    { nome: "Cropped borboleta", categoria: "camiseta", preco: 10, imagem_url: "cropped-borboleta.svg", inicial: false },
+    { nome: "Cropped estrela", categoria: "camiseta", preco: 15, imagem_url: "cropped-estrela.svg", inicial: false },
+    { nome: "Puffer", categoria: "camiseta", preco: 20, imagem_url: "puffer.svg", inicial: false },
+    { nome: "Calça wide leg", categoria: "calca", preco: 5, imagem_url: "calca-wideleg.svg", inicial: false },
+    { nome: "Saia jeans", categoria: "calca", preco: 10, imagem_url: "saia-jeans.svg", inicial: false },
+    { nome: "Saia branca", categoria: "calca", preco: 15, imagem_url: "saia-branca.svg", inicial: false },
+    { nome: "Calça coração", categoria: "calca", preco: 20, imagem_url: "calca-coracao.svg", inicial: false },
+    { nome: "Tênis verde", categoria: "calcado", preco: 5, imagem_url: "tenis-verde.svg", inicial: false },
+    { nome: "Tênis All Star", categoria: "calcado", preco: 10, imagem_url: "tenis-all-star.svg", inicial: false },
+    { nome: "Salto preto", categoria: "calcado", preco: 15, imagem_url: "salto-preto.svg", inicial: false },
+    { nome: "Tênis Adidas branco", categoria: "calcado", preco: 20, imagem_url: "tenis-adidas-branco.svg", inicial: false },
+    { nome: "Tênis Nike preto", categoria: "calcado", preco: 20, imagem_url: "tenis-nike-preto.svg", inicial: false },
+];
 
-
-// O seed demonstrativo é opt-in e não apaga documentos existentes.
-// Identificadores estáveis permitem executar novamente sem duplicar tentativas.
 const DEMO_NAMESPACE = "lola-relatorios-demo-v1";
 const DEMO_FONO_USUARIO = "lola.demo.fono";
 const DEMO_FONO_EMAIL = "lola.demo.fono@example.test";
@@ -69,7 +79,6 @@ async function seedRelatoriosDemo() {
         throw new Error("Para criar os dados demonstrativos, defina SEED_DEMO_PASSWORD com pelo menos 8 caracteres.");
     }
 
-    // Garante que o usuário de demonstração nunca substitua uma conta real.
     const idLoginFono = idEstavel("usuario:fono");
     const usuarioExistente = await Usuario.findOne({ usuario: DEMO_FONO_USUARIO });
     if (usuarioExistente && String(usuarioExistente._id) !== String(idLoginFono)) {
@@ -130,7 +139,6 @@ async function seedRelatoriosDemo() {
         throw new Error("Nem todas as palavras de demonstração foram encontradas.");
     }
 
-    // Segunda-feira da semana atual em UTC, para gerar seis semanas de histórico.
     const hoje = new Date();
     const hojeUTC = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate()));
     const diaSemana = (hojeUTC.getUTCDay() + 6) % 7;
@@ -141,7 +149,6 @@ async function seedRelatoriosDemo() {
     for (const paciente of pacientesCriados) {
         for (let semana = 0; semana < 6; semana++) {
             for (let dia = 0; dia < paciente.frequencia; dia++) {
-                // Dias 0..6; na semana atual, não cria registros futuros.
                 const deslocamento = Math.floor((dia * 7) / paciente.frequencia);
                 const data = new Date(inicio.getTime() + (semana * 7 + deslocamento) * 86400000);
                 if (data > hojeUTC) continue;
@@ -150,7 +157,6 @@ async function seedRelatoriosDemo() {
                 for (let n = 0; n < qtd; n++) {
                     const chave = `${paciente.codigo}:${semana}:${dia}:${n}`;
                     const palavra = palavrasDemo[inteiroAleatorio(`${chave}:palavra`, palavrasDemo.length)];
-                    // /r/ tem maior dificuldade; /p/ e /v/ tendem a ter mais acertos.
                     const ajusteFonema = { "/r/": -15, "/s/": -7, "/v/": 9, "/p/": 12 }[palavra.fonema] ?? 0;
                     const chance = Math.max(10, Math.min(95, paciente.base + semana * paciente.ganho + ajusteFonema));
                     const acertou = inteiroAleatorio(`${chave}:acerto`, 100) < chance;
@@ -177,7 +183,6 @@ async function seedRelatoriosDemo() {
     }
 
     if (operacoes.length) {
-        // timestamps: false mantém as datas históricas, inclusive nas reexecuções.
         for (let i = 0; i < operacoes.length; i += 500) {
             await Tentativa.bulkWrite(operacoes.slice(i, i + 500), { ordered: false, timestamps: false });
         }
@@ -196,14 +201,26 @@ const run = async () => {
     const ids = NIVEL_1.map((texto) => docs.find((d) => d.texto === texto)._id); 
     await Nivel.findOneAndUpdate({ numero: 1 }, { numero: 1, nome: "A fazenda", palavras: ids }, { upsert: true });
 
-    for (const i of itens) {
-        await Item.findOneAndUpdate({ nome: i.nome }, i, { upsert: true, runValidators: true });
+    const iniciais = [];
+    for (const { inicial, ...item } of itens) {
+        const documento = await Item.findOneAndUpdate(
+            { nome: item.nome },
+            { $set: item },
+            { upsert: true, runValidators: true, new: true }
+        );
+        if (inicial) iniciais.push(documento._id);
     }
+
+    await Paciente.updateMany(
+        { ativo: true },
+        { $addToSet: { inventario: { $each: iniciais } } }
+    );
 
     if (process.env.SEED_DEMO_REPORTS === "true") {
         await seedRelatoriosDemo();
     }
 
+    console.log(`Roupas iniciais: ${iniciais.length} itens adicionados aos inventários dos pacientes ativos.`);
     console.log(`Seed concluído: ${palavras.length} palavras, 1 nível (${NIVEL_1.length} palavras), ${itens.length} itens.`);
     await mongoose.disconnect();
 };

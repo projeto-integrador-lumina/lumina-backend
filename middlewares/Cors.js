@@ -1,30 +1,77 @@
-const escapar = (txt) => txt.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+
+const origensPadrao = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "https://my-app-orpin-phi-25.vercel.app"
+];
+
+const escapar = (texto) =>
+  texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const bate = (permitida, origem) => {
-    if (!permitida.includes("*")) return permitida === origem;
-    const regex = new RegExp("^" + permitida.split("*").map(escapar).join("[a-z0-9-]+") + "$", "i");
-    return regex.test(origem);
+  if (!permitida.includes("*")) {
+    return permitida === origem;
+  }
+
+  const regex = new RegExp(
+    "^" +
+      permitida
+        .split("*")
+        .map(escapar)
+        .join("[a-z0-9-]+") +
+      "$",
+    "i"
+  );
+
+  return regex.test(origem);
 };
 
 const cors = (req, res, next) => {
-    const bruto = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || "";
-    const permitidas = bruto.split(",").map((s) => s.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
-    const origem = req.headers.origin;
+  const bruto =
+    process.env.CORS_ORIGINS ||
+    process.env.CORS_ORIGIN ||
+    "";
 
-    if (origem && (permitidas.length === 0 || permitidas.some((p) => bate(p, origem)))) {
-        res.setHeader("Access-Control-Allow-Origin", permitidas.length === 0 ? "*" : origem);
-        res.setHeader("Vary", "Origin");
-        res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Responsavel-Token");
-        res.setHeader("Access-Control-Max-Age", "600");
+  const origensConfiguradas = bruto
+    .split(",")
+    .map((origem) =>
+      origem.trim().replace(/^["']|["']$/g, "")
+    )
+    .filter(Boolean);
 
-        if (req.headers["access-control-request-private-network"] === "true") {
-            res.setHeader("Access-Control-Allow-Private-Network", "true");
-        }
-    }
+  const permitidas = [
+    ...new Set([
+      ...origensPadrao,
+      ...origensConfiguradas
+    ])
+  ];
 
-    if (req.method === "OPTIONS") return res.sendStatus(204);
-    next();
+  const origem = req.headers.origin;
+
+  if (
+    origem &&
+    permitidas.some((permitida) =>
+      bate(permitida, origem)
+    )
+  ) {
+    res.setHeader("Access-Control-Allow-Origin", origem);
+    res.setHeader("Vary", "Origin");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, X-Responsavel-Token"
+    );
+    res.setHeader("Access-Control-Max-Age", "600");
+  }
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
 };
 
 export default cors;
