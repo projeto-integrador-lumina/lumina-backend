@@ -131,11 +131,26 @@ class pacienteService {
   }
 
   async setPin(id, hash) {
-    await Paciente.findByIdAndUpdate(id, {
-      pin_responsavel: hash,
-      pin_tentativas: 0,
-      pin_bloqueado_ate: null
-    });
+    return await Paciente.findOneAndUpdate(
+      {
+        _id: id,
+        $or: [
+          { pin_responsavel: { $exists: false } },
+          { pin_responsavel: null }
+        ]
+      },
+      {
+        $set: {
+          pin_responsavel: hash,
+          pin_tentativas: 0,
+          pin_bloqueado_ate: null
+        }
+      },
+      {
+        returnDocument: "after",
+        runValidators: true
+      }
+    );
   }
 
   async getComPin(id) {
@@ -143,14 +158,14 @@ class pacienteService {
   }
 
   async registrarErroPin(id, tentativas, bloqueado_ate) {
-    await Paciente.findByIdAndUpdate(id, {
+    return await Paciente.findByIdAndUpdate(id, {
       pin_tentativas: tentativas,
       pin_bloqueado_ate: bloqueado_ate
     });
   }
 
   async zerarErrosPin(id) {
-    await Paciente.findByIdAndUpdate(id, {
+    return await Paciente.findByIdAndUpdate(id, {
       pin_tentativas: 0,
       pin_bloqueado_ate: null
     });

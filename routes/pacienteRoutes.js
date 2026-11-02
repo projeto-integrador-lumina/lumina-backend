@@ -1,3 +1,4 @@
+
 import express from "express";
 import pacienteController from "../controllers/PacienteController.js";
 import notaController from "../controllers/NotaClinicaController.js";
@@ -9,14 +10,14 @@ const pacienteRoutes = express.Router();
 pacienteRoutes.get(
   "/pacientes/meu-perfil",
   Auth,
-  pacienteController.getMeuPerfil,
+  pacienteController.getMeuPerfil
 );
 
 pacienteRoutes.get(
   "/pacientes",
   Auth,
   soFono,
-  pacienteController.getAllPaciente,
+  pacienteController.getAllPaciente
 );
 
 pacienteRoutes.post(
@@ -24,32 +25,42 @@ pacienteRoutes.post(
   Auth,
   soFono,
   uploadFoto("foto_perfil"),
-  pacienteController.createPaciente,
+  pacienteController.createPaciente
 );
 
-pacienteRoutes.get("/pacientes/:id/notas", Auth, soFono, notaController.listar);
+pacienteRoutes.get(
+  "/pacientes/:id/notas",
+  Auth,
+  soFono,
+  notaController.listar
+);
 
-pacienteRoutes.post("/pacientes/:id/notas", Auth, soFono, notaController.criar);
+pacienteRoutes.post(
+  "/pacientes/:id/notas",
+  Auth,
+  soFono,
+  notaController.criar
+);
 
 pacienteRoutes.put(
   "/pacientes/:id/notas/:notaId",
   Auth,
   soFono,
-  notaController.alterar,
+  notaController.alterar
 );
 
 pacienteRoutes.delete(
   "/pacientes/:id/notas/:notaId",
   Auth,
   soFono,
-  notaController.remover,
+  notaController.remover
 );
 
 pacienteRoutes.get(
   "/pacientes/:id",
   Auth,
   soFono,
-  pacienteController.getOnePaciente,
+  pacienteController.getOnePaciente
 );
 
 pacienteRoutes.put(
@@ -57,42 +68,35 @@ pacienteRoutes.put(
   Auth,
   soFono,
   uploadFoto("foto_perfil"),
-  pacienteController.updatePaciente,
+  pacienteController.updatePaciente
 );
 
 pacienteRoutes.delete(
   "/pacientes/:id",
   Auth,
   soFono,
-  pacienteController.deletePaciente,
+  pacienteController.deletePaciente
 );
 
 pacienteRoutes.put(
   "/pacientes/:id/desativar",
   Auth,
   soFono,
-  pacienteController.desativarPaciente,
+  pacienteController.desativarPaciente
 );
 
 pacienteRoutes.put(
   "/pacientes/:id/ativar",
   Auth,
   soFono,
-  pacienteController.ativarPaciente,
+  pacienteController.ativarPaciente
 );
 
 pacienteRoutes.put(
   "/pacientes/:id/pin",
   Auth,
   soFono,
-  pacienteController.definirPinPaciente,
-);
-
-pacienteRoutes.post(
-  "/pacientes/:id/resetar-senha",
-  Auth,
-  soFono,
-  pacienteController.resetarSenhaPaciente,
+  pacienteController.definirPinPaciente
 );
 
 export default pacienteRoutes;

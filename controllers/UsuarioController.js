@@ -1,207 +1,44 @@
-import dotenv from 'dotenv';
-dotenv.config();
 
-import usuarioService from '../services/usuarioService.js';
-import fonoaudiologoService from '../services/fonoaudiologoService.js';
-import pacienteService from '../services/pacienteService.js';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import express from "express";
+import usuarioController from "../controllers/UsuarioController.js";
+import Auth, { soFono } from "../middlewares/Auth.js";
 
-const JWTSecret = process.env.JWTSECRET;
-const SENHA_MIN = 8;
+const usuarioRoutes = express.Router();
 
-const limpa = (v) => String(v || "").trim().toLowerCase();
+usuarioRoutes.post(
+  "/auth/login",
+  usuarioController.loginUsuario
+);
 
-const loginUsuario = async (req, res) => {
-    try {
-        const { usuario, senha, manter } = req.body;
-        if (!usuario || !senha) {
-            return res.status(400).json({ error: 'Usuário e senha são obrigatórios.' });
-        }
+usuarioRoutes.post(
+  "/auth/reativar",
+  usuarioController.reativarUsuario
+);
 
-        const user = await usuarioService.getOne(limpa(usuario));
-        const correct = user ? bcrypt.compareSync(String(senha), user.senha) : false;
+usuarioRoutes.put(
+  "/auth/senha",
+  Auth,
+  soFono,
+  usuarioController.trocarSenha
+);
 
-        if (!correct) {
-            return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
-        }
+usuarioRoutes.put(
+  "/auth/desativar",
+  Auth,
+  soFono,
+  usuarioController.desativarUsuario
+);
 
-        if (!user.ativo) {
-            if (user.tipo === "Fono") {
-                return res.status(403).json({ error: 'Essa conta está desativada.', contaDesativada: true });
-            }
-            return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
-        }
+usuarioRoutes.post(
+  "/auth/recuperar-senha/buscar",
+  usuarioController.buscarUsuarioRecuperacao
+);
 
-        const payload = { id: user._id, usuario: user.usuario, tipo: user.tipo };
-        let nome;
+usuarioRoutes.put(
+  "/auth/recuperar-senha",
+  Auth,
+  soFono,
+  usuarioController.redefinirSenhaAdministrativa
+);
 
-        if (user.tipo === "Fono") {
-            const fono = await fonoaudiologoService.getByLogin(user._id);
-            if (!fono) {
-                return res.status(401).json({ error: 'Fonoaudiólogo não encontrado para esse login.' });
-            }
-            payload.idFono = fono._id;
-            nome = fono.nome;
-        } else {
-            const paciente = await pacienteService.getByLogin(user._id);
-            if (!paciente || !paciente.ativo) {
-                return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
-            }
-            payload.idPaciente = paciente._id;
-            nome = paciente.nome;
-        }
-
-        await usuarioService.registrarAcesso(user._id);
-
-        const expiresIn = manter ? '30d' : '48h';
-
-        jwt.sign(payload, JWTSecret, { expiresIn }, (error, token) => {
-            if (error) {
-                res.status(400).json({ error: 'Não foi possível gerar o token de autenticação.' });
-            } else {
-                res.status(200).json({
-                    token,
-                    tipo: user.tipo,
-                    nome,
-                    precisaTrocarSenha: user.precisa_trocar_senha
-                });
-            }
-        });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 'Erro interno do servidor.' });
-    }
-};
-
-const trocarSenha = async (req, res) => {
-    try {
-        const { senhaAtual, novaSenha } = req.body;
-        if (!novaSenha || String(novaSenha).length < SENHA_MIN) {
-            return res.status(400).json({ error: `A nova senha precisa ter pelo menos ${SENHA_MIN} caracteres.` });
-        }
-
-        const user = await usuarioService.getById(req.loggedUser.id);
-        if (!bcrypt.compareSync(String(senhaAtual || ""), user.senha)) {
-            return res.status(401).json({ error: 'Senha atual incorreta.' });
-        }
-
-        const hash = bcrypt.hashSync(String(novaSenha), 10);
-        await usuarioService.updateSenha(user._id, hash, false);
-        res.status(200).json({ message: 'Senha alterada com sucesso!' });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 'Erro ao alterar senha.' });
-    }
-};
-
-const desativarUsuario = async (req, res) => {
-    try {
-        await usuarioService.setAtivo(req.loggedUser.id, false);
-        res.status(200).json({ message: 'Conta desativada com sucesso!' });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 'Erro ao desativar conta.' });
-    }
-};
-
-const reativarUsuario = async (req, res) => {
-    try {
-        const { usuario, senha } = req.body;
-        const user = await usuarioService.getOne(limpa(usuario));
-
-        if (!user || user.tipo !== "Fono" || !bcrypt.compareSync(String(senha || ""), user.senha)) {
-            return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
-        }
-
-        await usuarioService.setAtivo(user._id, true);
-        res.status(200).json({ message: 'Conta reativada com sucesso!' });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 'Erro ao reativar conta.' });
-    }
-};
-
-
-const buscarUsuarioRecuperacao = async (req, res) => {
-    try {
-        const usuario = limpa(req.body?.usuario);
-
-        if (!usuario) {
-            return res.status(400).json({
-                error: "Informe o nome de usuário."
-            });
-        }
-
-        const user = await usuarioService.getOne(usuario);
-
-        if (!user) {
-            return res.status(404).json({
-                error: "Usuário não encontrado."
-            });
-        }
-
-        return res.status(200).json({
-            encontrado: true,
-            usuario: user.usuario
-        });
-    } catch (error) {
-        console.log(error);
-
-        return res.status(500).json({
-            error: "Erro ao buscar usuário."
-        });
-    }
-};
-
-const redefinirSenhaAdministrativa = async (req, res) => {
-    try {
-        const usuario = limpa(req.body?.usuario);
-        const novaSenha = String(req.body?.novaSenha || "");
-
-        if (!usuario) {
-            return res.status(400).json({
-                error: "Informe o nome de usuário."
-            });
-        }
-
-        if (novaSenha.length < SENHA_MIN) {
-            return res.status(400).json({
-                error: `A nova senha precisa ter pelo menos ${SENHA_MIN} caracteres.`
-            });
-        }
-
-        const user = await usuarioService.getOne(usuario);
-
-        if (!user) {
-            return res.status(404).json({
-                error: "Usuário não encontrado."
-            });
-        }
-
-        const hash = await bcrypt.hash(novaSenha, 10);
-
-        await usuarioService.updateSenha(user._id, hash, false);
-
-        return res.status(200).json({
-            message: "Senha redefinida com sucesso!"
-        });
-    } catch (error) {
-        console.log(error);
-
-        return res.status(500).json({
-            error: "Erro ao redefinir senha."
-        });
-    }
-};
-
-export default {
-    loginUsuario,
-    trocarSenha,
-    desativarUsuario,
-    reativarUsuario,
-    buscarUsuarioRecuperacao,
-    redefinirSenhaAdministrativa,
-    JWTSecret,
-    SENHA_MIN
-};
+export default usuarioRoutes;

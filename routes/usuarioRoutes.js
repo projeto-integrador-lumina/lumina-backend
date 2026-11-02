@@ -5,10 +5,28 @@ import Auth, { soFono } from "../middlewares/Auth.js";
 
 const usuarioRoutes = express.Router();
 
-usuarioRoutes.post("/auth/login", usuarioController.loginUsuario);
-usuarioRoutes.post("/auth/reativar", usuarioController.reativarUsuario);
-usuarioRoutes.put("/auth/senha", Auth, usuarioController.trocarSenha);
-usuarioRoutes.put("/auth/desativar", Auth, soFono, usuarioController.desativarUsuario);
+usuarioRoutes.post(
+  "/auth/login",
+  usuarioController.loginUsuario
+);
+
+usuarioRoutes.post(
+  "/auth/reativar",
+  usuarioController.reativarUsuario
+);
+
+usuarioRoutes.put(
+  "/auth/senha",
+  Auth,
+  usuarioController.trocarSenha
+);
+
+usuarioRoutes.put(
+  "/auth/desativar",
+  Auth,
+  soFono,
+  usuarioController.desativarUsuario
+);
 
 usuarioRoutes.post(
   "/auth/recuperar-senha/buscar",
