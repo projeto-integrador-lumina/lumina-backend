@@ -19,7 +19,7 @@ const Auth = async (req, res, next) => {
     });
   }
 
-  const JWTSecret = process.env.JWT_SECRET;
+  const JWTSecret = process.env.JWTSECRET;
 
   if (!JWTSecret) {
     console.error("JWT_SECRET não está configurado.");
