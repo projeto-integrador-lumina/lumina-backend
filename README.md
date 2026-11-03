@@ -16,7 +16,7 @@ As duas aplicações utilizam o mesmo backend e o mesmo banco de dados MongoDB A
 | Aplicação | Endereço |
 |---|---|
 | Lumina Dashboard | https://lumina-frontend-dashboard-seven.vercel.app |
-| Lolá | https://my-app-lumina-f76f.vercel.app |
+| Lolá | https://my-app-orpin-phi-25.vercel.app/ |
 | Lumina Backend | https://lumina-backend-6mk6.onrender.com |
 
 O backend está hospedado no Render, enquanto os frontends estão hospedados na Vercel.
